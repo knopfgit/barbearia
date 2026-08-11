@@ -1,0 +1,75 @@
+import express from 'express'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
+import { getDb } from './db.js'
+import { requireAuth } from './auth.js'
+import { hashPassword } from './auth.js'
+import { seed } from './seed.js'
+
+import authRoutes from './routes/auth.js'
+import clients from './routes/clients.js'
+import barbers from './routes/barbers.js'
+import services from './routes/services.js'
+import products from './routes/products.js'
+import appointments from './routes/appointments.js'
+import tickets from './routes/tickets.js'
+import cash from './routes/cash.js'
+import reports from './routes/reports.js'
+import settings from './routes/settings.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+export function createApp() {
+  const app = express()
+  app.use(express.json({ limit: '2mb' }))
+
+  app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }))
+  app.use('/api/auth', authRoutes)
+
+  // Tudo abaixo exige sessão.
+  app.use('/api', requireAuth)
+  app.use('/api/clients', clients)
+  app.use('/api/barbers', barbers)
+  app.use('/api/services', services)
+  app.use('/api/products', products)
+  app.use('/api/appointments', appointments)
+  app.use('/api/tickets', tickets)
+  app.use('/api/cash', cash)
+  app.use('/api/reports', reports)
+  app.use('/api/settings', settings)
+
+  // Front compilado (npm run build) servido pelo mesmo processo em produção.
+  const dist = join(__dirname, '..', 'dist')
+  if (existsSync(dist)) {
+    app.use(express.static(dist))
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next()
+      res.sendFile(join(dist, 'index.html'))
+    })
+  }
+
+  // Tratador central: mensagem em português, status coerente.
+  app.use((err, req, res, next) => {
+    console.error(err)
+    if (res.headersSent) return next(err)
+    res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor.' })
+  })
+
+  return app
+}
+
+// Cria o admin e os dados de demonstração no primeiro boot (banco vazio).
+export function ensureSeeded() {
+  const db = getDb()
+  const hasUser = db.prepare('SELECT COUNT(*) AS n FROM users').get().n > 0
+  if (!hasUser) {
+    const email = (process.env.ADMIN_EMAIL || 'admin@barbearia.local').toLowerCase()
+    const pass = process.env.ADMIN_PASSWORD || 'admin123'
+    db.prepare('INSERT INTO users (name, email, passwordHash, role) VALUES (?,?,?,?)')
+      .run('Administrador', email, hashPassword(pass), 'admin')
+    if (process.env.NODE_ENV !== 'production') seed(db)
+    return { seeded: true, email, pass }
+  }
+  return { seeded: false }
+}
