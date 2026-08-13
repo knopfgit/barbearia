@@ -1,8 +1,31 @@
 import { Router } from 'express'
 import { getDb } from '../db.js'
 import { wrap, asInt, toCents, num } from './_helpers.js'
+import { creditLoyaltyForTicket } from './loyalty.js'
 
 const r = Router()
+
+// Ficha técnica: ao lançar um serviço na comanda, consome o insumo cadastrado em
+// service_consumables e grava o snapshot em ticket_item_consumables (histórico não
+// muda se a ficha técnica for editada depois).
+function consumeForServiceItem(db, ticketItemId, serviceId, multiplier) {
+  const recipe = db.prepare('SELECT * FROM service_consumables WHERE serviceId = ?').all(serviceId)
+  for (const row of recipe) {
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(row.productId)
+    if (!product) continue
+    const qty = row.qty * multiplier
+    db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(qty, product.id)
+    db.prepare('INSERT INTO ticket_item_consumables (ticketItemId, productId, productName, qty) VALUES (?,?,?,?)')
+      .run(ticketItemId, product.id, product.name, qty)
+  }
+}
+// Devolve ao estoque o que foi consumido por um item (remoção/cancelamento do item).
+function reverseConsumablesForItem(db, ticketItemId) {
+  const rows = db.prepare('SELECT * FROM ticket_item_consumables WHERE ticketItemId = ?').all(ticketItemId)
+  for (const row of rows) {
+    if (row.productId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(row.qty, row.productId)
+  }
+}
 
 function loadTicket(db, id) {
   const t = db.prepare(
@@ -66,7 +89,9 @@ r.post('/', wrap((req, res) => {
     const ap = db.prepare('SELECT * FROM appointments WHERE id = ?').get(asInt(appointmentId))
     if (ap && ap.serviceId) {
       const svc = db.prepare('SELECT * FROM services WHERE id = ?').get(ap.serviceId)
-      if (svc) addItem(db, id, { kind: 'service', refId: svc.id, description: svc.name, barberId: ap.barberId, qty: 1, unitPrice: svc.price })
+      // Não passar unitPrice aqui: svc.price já está em centavos, e addItem() chama toCents()
+      // (que espera reais) quando unitPrice vem preenchido — passar de novo multiplicaria por 100.
+      if (svc) addItem(db, id, { kind: 'service', refId: svc.id, description: svc.name, barberId: ap.barberId, qty: 1 })
     }
     db.prepare("UPDATE appointments SET status='done' WHERE id=?").run(asInt(appointmentId))
   }
@@ -83,12 +108,13 @@ function addItem(db, ticketId, { kind, refId, description, barberId, qty, unitPr
   const total = unit * q
   const pct = commissionPctFor(db, kind, ref, barberId ? asInt(barberId) : null)
   const commissionValue = Math.round(total * pct / 100)
-  db.prepare(
+  const info = db.prepare(
     `INSERT INTO ticket_items (ticketId, kind, refId, description, barberId, qty, unitPrice, total, commissionPct, commissionValue)
      VALUES (?,?,?,?,?,?,?,?,?,?)`
   ).run(ticketId, kind, refId ? asInt(refId) : null, description || (ref ? ref.name : 'Item'),
     barberId ? asInt(barberId) : null, q, unit, total, pct, commissionValue)
   if (kind === 'product' && ref) db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(q, ref.id)
+  if (kind === 'service' && ref) consumeForServiceItem(db, info.lastInsertRowid, ref.id, q)
 }
 
 r.post('/:id/items', wrap((req, res) => {
@@ -107,6 +133,7 @@ r.delete('/:id/items/:itemId', wrap((req, res) => {
   const item = db.prepare('SELECT * FROM ticket_items WHERE id = ? AND ticketId = ?').get(asInt(req.params.itemId), id)
   if (!item) return res.status(404).json({ error: 'Item não encontrado.' })
   if (item.kind === 'product' && item.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(item.qty, item.refId)
+  if (item.kind === 'service') reverseConsumablesForItem(db, item.id)
   db.prepare('DELETE FROM ticket_items WHERE id = ?').run(item.id)
   recompute(db, id)
   res.json(loadTicket(db, id))
@@ -119,6 +146,7 @@ r.put('/:id', wrap((req, res) => {
   const t = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id)
   if (!t || t.status !== 'open') return res.status(400).json({ error: 'Comanda não está aberta.' })
   const { discount, clientId, barberId, notes } = req.body || {}
+  if (discount != null && toCents(discount) < 0) return res.status(400).json({ error: 'Desconto não pode ser negativo.' })
   db.prepare('UPDATE tickets SET discount=?, clientId=?, barberId=?, notes=? WHERE id=?')
     .run(discount != null ? toCents(discount) : t.discount,
       clientId !== undefined ? (clientId ? asInt(clientId) : null) : t.clientId,
@@ -144,6 +172,7 @@ r.post('/:id/checkout', wrap((req, res) => {
     .run(String(paymentMethod), session.id, id)
   db.prepare('INSERT INTO cash_movements (sessionId, type, amount, method, description, ticketId, userId) VALUES (?,?,?,?,?,?,?)')
     .run(session.id, 'sale', fresh.total, String(paymentMethod), `Comanda #${id}`, id, req.user?.id || null)
+  creditLoyaltyForTicket(db, fresh)
   res.json(loadTicket(db, id))
 }))
 
@@ -152,9 +181,11 @@ r.post('/:id/cancel', wrap((req, res) => {
   const id = asInt(req.params.id)
   const t = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id)
   if (!t || t.status !== 'open') return res.status(400).json({ error: 'Comanda não está aberta.' })
-  // devolve estoque dos produtos
-  for (const it of db.prepare("SELECT * FROM ticket_items WHERE ticketId=? AND kind='product'").all(id))
-    if (it.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(it.qty, it.refId)
+  // devolve estoque dos produtos e dos insumos consumidos por serviços
+  for (const it of db.prepare("SELECT * FROM ticket_items WHERE ticketId=?").all(id)) {
+    if (it.kind === 'product' && it.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(it.qty, it.refId)
+    if (it.kind === 'service') reverseConsumablesForItem(db, it.id)
+  }
   db.prepare("UPDATE tickets SET status='canceled' WHERE id=?").run(id)
   res.json({ ok: true })
 }))

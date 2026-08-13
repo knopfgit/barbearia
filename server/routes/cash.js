@@ -42,8 +42,10 @@ r.get('/current', wrap((req, res) => {
 r.post('/open', wrap((req, res) => {
   const db = getDb()
   if (currentSession(db)) return res.status(400).json({ error: 'Já existe um caixa aberto.' })
+  const openingFloat = toCents(req.body?.openingFloat)
+  if (openingFloat < 0) return res.status(400).json({ error: 'Troco inicial não pode ser negativo.' })
   const info = db.prepare('INSERT INTO cash_sessions (openedBy, openingFloat) VALUES (?,?)')
-    .run(req.user?.id || null, toCents(req.body?.openingFloat))
+    .run(req.user?.id || null, openingFloat)
   res.status(201).json(db.prepare('SELECT * FROM cash_sessions WHERE id = ?').get(info.lastInsertRowid))
 }))
 
@@ -54,8 +56,10 @@ r.post('/movement', wrap((req, res) => {
   if (!session) return res.status(400).json({ error: 'Nenhum caixa aberto.' })
   const { type, amount, description } = req.body || {}
   if (!['in', 'out'].includes(type)) return res.status(400).json({ error: 'Tipo inválido.' })
+  const amountCents = toCents(amount)
+  if (amountCents <= 0) return res.status(400).json({ error: 'Informe um valor maior que zero.' })
   db.prepare('INSERT INTO cash_movements (sessionId, type, amount, method, description, userId) VALUES (?,?,?,?,?,?)')
-    .run(session.id, type, toCents(amount), 'dinheiro', description || (type === 'in' ? 'Reforço' : 'Sangria'), req.user?.id || null)
+    .run(session.id, type, amountCents, 'dinheiro', description || (type === 'in' ? 'Reforço' : 'Sangria'), req.user?.id || null)
   res.status(201).json({ ok: true })
 }))
 

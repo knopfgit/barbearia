@@ -72,6 +72,57 @@ function ServiceModal({ svc, onClose, onSaved }) {
         <input className="input" type="number" min="0" max="100" value={f.commissionPct} onChange={(e) => set('commissionPct', e.target.value)} placeholder="padrão do profissional" />
       </Field>
       {!isNew && <label className="row" style={{ gap: 8, cursor: 'pointer' }}><input type="checkbox" checked={!!f.active} onChange={(e) => set('active', e.target.checked ? 1 : 0)} /> <span>Ativo</span></label>}
+      {!isNew && <Consumables serviceId={svc.id} />}
     </Modal>
+  )
+}
+
+// Ficha técnica: quais produtos/insumos esse serviço consome por execução.
+function Consumables({ serviceId }) {
+  const [rows, setRows] = useState(null)
+  const [products, setProducts] = useState([])
+  const [productId, setProductId] = useState('')
+  const [qty, setQty] = useState(1)
+  const toast = useToast()
+
+  function load() { api(`/services/${serviceId}/consumables`).then(setRows).catch(() => setRows([])) }
+  useEffect(load, [serviceId])
+  useEffect(() => { api('/products?all=1').then(setProducts).catch(() => setProducts([])) }, [])
+
+  async function add() {
+    if (!productId) return toast.erro('Escolha um produto/insumo.')
+    try { await api(`/services/${serviceId}/consumables`, { method: 'POST', body: { productId, qty } }); setProductId(''); setQty(1); load() }
+    catch (e) { toast.erro(e.message) }
+  }
+  async function remove(rowId) {
+    await api(`/services/${serviceId}/consumables/${rowId}`, { method: 'DELETE' }); load()
+  }
+
+  return (
+    <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line-soft)' }}>
+      <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.02em', marginBottom: 8 }}>
+        FICHA TÉCNICA — insumos consumidos por execução
+      </div>
+      {rows === null ? null : rows.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13, margin: '0 0 10px' }}>Nenhum insumo vinculado — o estoque não é afetado ao vender esse serviço.</p>
+      ) : (
+        <div style={{ marginBottom: 10 }}>
+          {rows.map((c) => (
+            <div key={c.id} className="spread" style={{ padding: '5px 0', fontSize: 13.5 }}>
+              <span>{c.productName} <span className="muted">× {c.qty}</span></span>
+              <button type="button" className="btn btn--ghost btn--sm" onClick={() => remove(c.id)}>Remover</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="row" style={{ gap: 6 }}>
+        <select className="select" value={productId} onChange={(e) => setProductId(e.target.value)} style={{ flex: 1 }}>
+          <option value="">— Adicionar insumo —</option>
+          {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <input className="input" type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} style={{ width: 64 }} />
+        <button type="button" className="btn btn--sm" onClick={add}>Adicionar</button>
+      </div>
+    </div>
   )
 }

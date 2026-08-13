@@ -17,6 +17,8 @@ import tickets from './routes/tickets.js'
 import cash from './routes/cash.js'
 import reports from './routes/reports.js'
 import settings from './routes/settings.js'
+import stock from './routes/stock.js'
+import loyalty from './routes/loyalty.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -38,6 +40,8 @@ export function createApp() {
   app.use('/api/cash', cash)
   app.use('/api/reports', reports)
   app.use('/api/settings', settings)
+  app.use('/api/stock', stock)
+  app.use('/api/loyalty', loyalty)
 
   // Front compilado (npm run build) servido pelo mesmo processo em produção.
   const dist = join(__dirname, '..', 'dist')

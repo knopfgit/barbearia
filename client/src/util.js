@@ -17,7 +17,12 @@ export function dia(iso) {
   const d = iso ? new Date(iso) : new Date()
   return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
 }
-export function today() { return new Date().toISOString().slice(0, 10) }
+// Usa componentes locais (não toISOString/UTC) para não adiantar o dia perto da
+// virada UTC (~21h em Brasília, UTC-3).
+export function today() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 export function initials(name) {
   return String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 }

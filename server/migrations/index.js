@@ -146,4 +146,66 @@ export const migrations = [
       `)
     },
   },
+  {
+    id: '0002_estoque',
+    up(d) {
+      d.exec(`
+        ALTER TABLE products ADD COLUMN minStock INTEGER NOT NULL DEFAULT 0;
+
+        -- Movimentações manuais de estoque (entrada|saida|ajuste). qty é sempre o delta
+        -- efetivamente aplicado ao estoque (positivo em entrada, negativo em saida/ajuste
+        -- que reduz), pra virar um extrato consistente.
+        CREATE TABLE stock_movements (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          productId INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          type TEXT NOT NULL,                       -- entrada|saida|ajuste
+          qty INTEGER NOT NULL,                     -- delta aplicado (pode ser negativo)
+          reason TEXT,
+          userId INTEGER REFERENCES users(id),
+          createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX idx_stock_movements_product ON stock_movements(productId, createdAt);
+
+        -- Ficha técnica: quanto de cada produto/insumo um serviço consome por execução.
+        CREATE TABLE service_consumables (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          serviceId INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+          productId INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          qty INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE INDEX idx_service_consumables_service ON service_consumables(serviceId);
+
+        -- Snapshot do consumo real no momento da venda (a ficha técnica pode mudar depois,
+        -- isso preserva o histórico e é o que se reverte se o item for removido/cancelado).
+        CREATE TABLE ticket_item_consumables (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ticketItemId INTEGER NOT NULL REFERENCES ticket_items(id) ON DELETE CASCADE,
+          productId INTEGER REFERENCES products(id) ON DELETE SET NULL,
+          productName TEXT NOT NULL,
+          qty INTEGER NOT NULL
+        );
+        CREATE INDEX idx_ticket_item_consumables_item ON ticket_item_consumables(ticketItemId);
+      `)
+    },
+  },
+  {
+    id: '0003_fidelidade',
+    up(d) {
+      d.exec(`
+        -- Extrato de pontos de fidelidade por cliente. points é sempre positivo; type
+        -- define o sinal do efeito no saldo (credito soma, debito/ajuste-negativo subtrai).
+        CREATE TABLE loyalty_movements (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          clientId INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          type TEXT NOT NULL,                       -- credito|debito
+          points INTEGER NOT NULL,
+          reason TEXT,
+          ticketId INTEGER REFERENCES tickets(id) ON DELETE SET NULL,
+          userId INTEGER REFERENCES users(id),
+          createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX idx_loyalty_client ON loyalty_movements(clientId, createdAt);
+      `)
+    },
+  },
 ]

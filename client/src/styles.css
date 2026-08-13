@@ -185,6 +185,9 @@ label.field { display: block; margin-bottom: 13px; }
 .badge--done { color: #9db6dd; border-color: #34435c; background: #1b2434; }
 .badge--canceled, .badge--noshow { color: #e0aaa2; border-color: #543029; background: #2e1e1b; }
 .badge--open { color: var(--brass-glow); border-color: var(--brass-dim); background: rgba(200,161,90,.1); }
+.badge--bronze { color: #d3966a; border-color: #6b4429; background: rgba(180,110,60,.12); }
+.badge--prata { color: #c7ced4; border-color: #545e66; background: rgba(160,175,190,.12); }
+.badge--ouro { color: var(--brass-glow); border-color: var(--brass-dim); background: rgba(200,161,90,.16); }
 .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
 /* KPI */
@@ -232,6 +235,33 @@ label.field { display: block; margin-bottom: 13px; }
 .slot__main { flex: 1; min-width: 0; }
 .slot__client { font-weight: 600; font-size: 14.5px; }
 .slot__meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+.mini-cal { border: 1px solid var(--line); border-radius: var(--radius); background: var(--ink); padding: 12px; margin-bottom: 14px; }
+.mini-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mini-cal__title { font-size: 13px; font-weight: 600; }
+.mini-cal__legend { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.mini-cal__legend span { display: inline-flex; align-items: center; gap: 5px; }
+.mini-cal__dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.mini-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.mini-cal__weekday { text-align: center; font-size: 10.5px; color: var(--muted); font-weight: 600; padding-bottom: 2px; }
+.mini-cal__day {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); font-size: 12.5px; border: 1px solid transparent;
+  background: var(--ink-3); color: var(--cream); cursor: pointer; transition: border-color .12s, transform .06s;
+}
+.mini-cal__day:hover { border-color: var(--brass-dim); transform: translateY(-1px); }
+.mini-cal__day--blank { visibility: hidden; cursor: default; }
+.mini-cal__day--past { background: transparent; color: var(--muted); opacity: .4; cursor: not-allowed; }
+.mini-cal__day--past:hover { border-color: transparent; transform: none; }
+.mini-cal__day--livre { background: rgba(143,174,91,.16); color: var(--green); }
+.mini-cal__day--cheio { background: rgba(176,74,63,.16); color: #e39284; }
+.mini-cal__day--selected { border-color: var(--brass); box-shadow: 0 0 0 2px rgba(200,161,90,.25); font-weight: 700; }
+
+.slot-pick { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 13px; }
+.slot-pick__btn { padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink-2); color: var(--cream); font-size: 12.5px; cursor: pointer; }
+.slot-pick__btn:hover { border-color: var(--brass-dim); }
+.slot-pick__btn.active { background: rgba(200,161,90,.14); color: var(--brass-glow); border-color: var(--brass-dim); }
+.slot-pick__empty { color: var(--muted); font-size: 12.5px; padding: 4px 0 13px; }
 
 /* ---------- comanda / PDV ---------- */
 .pdv { display: grid; grid-template-columns: 1fr 360px; gap: 18px; align-items: start; }

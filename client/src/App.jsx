@@ -13,6 +13,8 @@ import Clientes from './pages/Clientes.jsx'
 import Profissionais from './pages/Profissionais.jsx'
 import Servicos from './pages/Servicos.jsx'
 import Produtos from './pages/Produtos.jsx'
+import Estoque from './pages/Estoque.jsx'
+import Fidelidade from './pages/Fidelidade.jsx'
 import Financeiro from './pages/Financeiro.jsx'
 import Configuracoes from './pages/Configuracoes.jsx'
 
@@ -31,6 +33,8 @@ const NAV = [
   ] },
   { group: 'Gestão', items: [
     { to: '/financeiro', label: 'Financeiro', icon: '$' },
+    { to: '/estoque', label: 'Estoque', icon: '▥' },
+    { to: '/fidelidade', label: 'Fidelidade', icon: '♥' },
     { to: '/configuracoes', label: 'Configurações', icon: '⚙' },
   ] },
 ]
@@ -92,6 +96,8 @@ function Layout() {
             <Route path="/servicos" element={<Servicos />} />
             <Route path="/produtos" element={<Produtos />} />
             <Route path="/financeiro" element={<Financeiro />} />
+            <Route path="/estoque" element={<Estoque />} />
+            <Route path="/fidelidade" element={<Fidelidade />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

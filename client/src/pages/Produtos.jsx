@@ -19,14 +19,15 @@ export default function Produtos() {
       <div className="card">
         {!list ? <Spinner /> : list.length === 0 ? <div className="card__body"><Empty mark="▦" title="Nenhum produto" /></div> : (
           <table className="table">
-            <thead><tr><th>Produto</th><th>SKU</th><th className="num">Preço</th><th className="num">Estoque</th><th className="num">Comissão</th><th></th></tr></thead>
+            <thead><tr><th>Produto</th><th>SKU</th><th className="num">Preço</th><th className="num">Estoque</th><th className="num">Mínimo</th><th className="num">Comissão</th><th></th></tr></thead>
             <tbody>
               {list.map((p) => (
                 <tr key={p.id} style={{ opacity: p.active ? 1 : .5 }}>
                   <td style={{ fontWeight: 600 }}>{p.name}</td>
                   <td className="muted mono">{p.sku || '—'}</td>
                   <td className="num money">{brl(p.price)}</td>
-                  <td className="num" style={{ color: p.stock <= 3 ? 'var(--oxblood)' : 'inherit' }}>{p.stock}</td>
+                  <td className="num" style={{ color: p.minStock > 0 && p.stock <= p.minStock ? 'var(--oxblood)' : 'inherit' }}>{p.stock}</td>
+                  <td className="num muted">{p.minStock || '—'}</td>
                   <td className="num muted">{p.commissionPct}%</td>
                   <td className="right"><button className="btn btn--ghost btn--sm" onClick={() => setEditing(p)}>Editar</button></td>
                 </tr>
@@ -43,7 +44,7 @@ export default function Produtos() {
 function ProductModal({ prod, onClose, onSaved }) {
   const isNew = !prod.id
   const money = (c) => (c != null ? (c / 100).toFixed(2).replace('.', ',') : '')
-  const [f, setF] = useState({ name: prod.name || '', sku: prod.sku || '', price: money(prod.price), cost: money(prod.cost), stock: prod.stock ?? 0, commissionPct: prod.commissionPct ?? 0, active: prod.active ?? 1 })
+  const [f, setF] = useState({ name: prod.name || '', sku: prod.sku || '', price: money(prod.price), cost: money(prod.cost), stock: prod.stock ?? 0, minStock: prod.minStock ?? 0, commissionPct: prod.commissionPct ?? 0, active: prod.active ?? 1 })
   const [busy, setBusy] = useState(false)
   const toast = useToast()
   const set = (k, v) => setF({ ...f, [k]: v })
@@ -51,7 +52,7 @@ function ProductModal({ prod, onClose, onSaved }) {
   async function save() {
     if (!f.name.trim()) return toast.erro('Informe o nome do produto.')
     setBusy(true)
-    const body = { name: f.name, sku: f.sku, price: parseMoney(f.price), cost: parseMoney(f.cost), stock: Number(f.stock), commissionPct: Number(f.commissionPct), active: f.active }
+    const body = { name: f.name, sku: f.sku, price: parseMoney(f.price), cost: parseMoney(f.cost), stock: Number(f.stock), minStock: Number(f.minStock), commissionPct: Number(f.commissionPct), active: f.active }
     try {
       if (isNew) await api('/products', { method: 'POST', body })
       else await api(`/products/${prod.id}`, { method: 'PUT', body })
@@ -72,9 +73,13 @@ function ProductModal({ prod, onClose, onSaved }) {
       </div>
       <div className="cols-2">
         <Field label="Estoque"><input className="input" type="number" value={f.stock} onChange={(e) => set('stock', e.target.value)} /></Field>
-        <Field label="Comissão (%)"><input className="input" type="number" min="0" max="100" value={f.commissionPct} onChange={(e) => set('commissionPct', e.target.value)} /></Field>
+        <Field label="Estoque mínimo (alerta)"><input className="input" type="number" min="0" value={f.minStock} onChange={(e) => set('minStock', e.target.value)} /></Field>
       </div>
-      {!isNew && <label className="row" style={{ gap: 8, cursor: 'pointer' }}><input type="checkbox" checked={!!f.active} onChange={(e) => set('active', e.target.checked ? 1 : 0)} /> <span>Ativo</span></label>}
+      <div className="cols-2">
+        <Field label="Comissão (%)"><input className="input" type="number" min="0" max="100" value={f.commissionPct} onChange={(e) => set('commissionPct', e.target.value)} /></Field>
+        <div />
+      </div>
+      <label className="row" style={{ gap: 8, cursor: 'pointer' }}><input type="checkbox" checked={!!f.active} onChange={(e) => set('active', e.target.checked ? 1 : 0)} /> <span>Ativo (desmarque para cadastrar como insumo interno, não vendido no PDV)</span></label>
     </Modal>
   )
 }

@@ -86,20 +86,104 @@ function shift(dateStr, days) {
   return d.toISOString().slice(0, 10)
 }
 
+// Formata "YYYY-MM-DD" como "DD/MM/YYYY" sem passar por Date (evita parse como UTC).
+function dmy(dateStr) {
+  const [y, m, d] = dateStr.split('-')
+  return `${d}/${m}/${y}`
+}
+
+const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+function shiftMonth(month, delta) {
+  const [y, m] = month.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+// Mini-calendário do mês: verde = tem horário livre, vermelho = lotado, para o barbeiro escolhido.
+function MiniCalendar({ barberId, selectedDate, excludeId, onSelect }) {
+  const [month, setMonth] = useState(selectedDate.slice(0, 7))
+  const [avail, setAvail] = useState(null)
+
+  useEffect(() => { setMonth(selectedDate.slice(0, 7)) }, [selectedDate])
+  useEffect(() => {
+    if (!barberId) { setAvail(null); return }
+    setAvail(null)
+    const q = excludeId ? `&excludeId=${excludeId}` : ''
+    api(`/appointments/availability?barberId=${barberId}&month=${month}${q}`).then(setAvail).catch(() => setAvail(null))
+  }, [barberId, month, excludeId])
+
+  const [y, m] = month.split('-').map(Number)
+  const firstWeekday = new Date(y, m - 1, 1).getDay()
+  const daysInMonth = new Date(y, m, 0).getDate()
+  const todayStr = today()
+  const rawLabel = new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  const monthLabel = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)
+
+  const cells = Array(firstWeekday).fill(null)
+  for (let day = 1; day <= daysInMonth; day++) cells.push(`${month}-${String(day).padStart(2, '0')}`)
+
+  return (
+    <div className="mini-cal">
+      <div className="mini-cal__head">
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => setMonth((mo) => shiftMonth(mo, -1))}>‹</button>
+        <div className="mini-cal__title">{monthLabel}</div>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => setMonth((mo) => shiftMonth(mo, 1))}>›</button>
+      </div>
+      <div className="mini-cal__legend">
+        <span><i className="mini-cal__dot" style={{ background: 'var(--green)' }} />Tem horário</span>
+        <span><i className="mini-cal__dot" style={{ background: 'var(--oxblood)' }} />Lotado</span>
+      </div>
+      <div className="mini-cal__grid">
+        {WEEKDAYS.map((w) => <div key={w} className="mini-cal__weekday">{w}</div>)}
+        {cells.map((dt, i) => {
+          if (!dt) return <div key={`b${i}`} className="mini-cal__day mini-cal__day--blank" />
+          const isPast = dt < todayStr
+          const status = avail?.days?.[dt]
+          const cls = ['mini-cal__day']
+          if (isPast) cls.push('mini-cal__day--past')
+          else if (status === 'cheio') cls.push('mini-cal__day--cheio')
+          else if (status === 'livre') cls.push('mini-cal__day--livre')
+          if (dt === selectedDate) cls.push('mini-cal__day--selected')
+          return (
+            <div key={dt} className={cls.join(' ')} onClick={() => !isPast && onSelect(dt)}>
+              {Number(dt.slice(8, 10))}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function ApptModal({ appt, date, barbers, clients, services, onClose, onSaved }) {
   const isNew = !appt.id
   const toast = useToast()
-  const [time, setTime] = useState(appt.startAt ? hm(appt.startAt) : '09:00')
+  const [apptDate, setApptDate] = useState(appt.startAt ? appt.startAt.slice(0, 10) : date)
+  const [time, setTime] = useState(appt.startAt ? hm(appt.startAt) : '')
   const [clientId, setClientId] = useState(appt.clientId || '')
   const [barberId, setBarberId] = useState(appt.barberId || (barbers[0]?.id ?? ''))
   const [serviceId, setServiceId] = useState(appt.serviceId || '')
   const [notes, setNotes] = useState(appt.notes || '')
   const [busy, setBusy] = useState(false)
+  const [slots, setSlots] = useState(null)
+  const [slotsError, setSlotsError] = useState(false)
+
+  const duration = services.find((s) => String(s.id) === String(serviceId))?.durationMin || ''
+
+  useEffect(() => {
+    if (!barberId || !apptDate) { setSlots(null); return }
+    setSlots(null)
+    setSlotsError(false)
+    const q = (duration ? `&durationMin=${duration}` : '') + (isNew ? '' : `&excludeId=${appt.id}`)
+    api(`/appointments/slots?barberId=${barberId}&date=${apptDate}${q}`).then(setSlots).catch(() => { setSlots([]); setSlotsError(true) })
+  }, [barberId, apptDate, duration])
 
   async function save() {
     if (!barberId) return toast.erro('Escolha o profissional.')
+    if (!time) return toast.erro('Escolha um horário.')
     setBusy(true)
-    const startAt = `${date}T${time}:00`
+    const startAt = `${apptDate}T${time}:00`
     try {
       if (isNew) await api('/appointments', { method: 'POST', body: { clientId, barberId, serviceId, startAt, notes } })
       else await api(`/appointments/${appt.id}`, { method: 'PUT', body: { clientId, barberId, serviceId, startAt, notes } })
@@ -118,14 +202,33 @@ function ApptModal({ appt, date, barbers, clients, services, onClose, onSaved })
         <button className="btn" onClick={onClose}>Cancelar</button>
         <button className="btn btn--primary" onClick={save} disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>
       </>}>
-      <div className="cols-2">
-        <Field label="Horário"><input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
-        <Field label="Profissional">
-          <select className="select" value={barberId} onChange={(e) => setBarberId(e.target.value)}>
-            {barbers.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        </Field>
-      </div>
+      <Field label="Profissional">
+        <select className="select" value={barberId} onChange={(e) => setBarberId(e.target.value)}>
+          {barbers.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+      </Field>
+
+      <MiniCalendar barberId={barberId} selectedDate={apptDate} excludeId={isNew ? null : appt.id} onSelect={(d) => { setApptDate(d); setTime('') }} />
+
+      <Field label={`Horário livre em ${dmy(apptDate)}`}>
+        {slots === null ? (
+          <div className="slot-pick__empty">Carregando horários…</div>
+        ) : slotsError ? (
+          <div className="slot-pick__empty">Não foi possível carregar os horários. Tente trocar de dia ou recarregar a página.</div>
+        ) : slots.length === 0 ? (
+          <div className="slot-pick__empty">Nenhum horário livre nesse dia para este profissional.</div>
+        ) : (
+          <div className="slot-pick">
+            {slots.map((s) => (
+              <button type="button" key={s} className={`slot-pick__btn${s === time ? ' active' : ''}`} onClick={() => setTime(s)}>{s}</button>
+            ))}
+          </div>
+        )}
+      </Field>
+      <Field label="Ou digite um horário manualmente">
+        <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ maxWidth: 140 }} />
+      </Field>
+
       <Field label="Cliente">
         <select className="select" value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">— Sem cliente / avulso —</option>

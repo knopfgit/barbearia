@@ -24,13 +24,23 @@ export function seed(db) {
   const sIds = services.map((s) => Number(sIns.run(...s).lastInsertRowid))
 
   const products = [
-    ['Pomada modeladora', 'POM-01', 3500, 1800, 24, 10],
-    ['Shampoo barba', 'SHB-01', 4200, 2200, 15, 10],
-    ['Óleo para barba', 'OLE-01', 3900, 2000, 18, 10],
-    ['Minoxidil 5%', 'MIN-01', 8900, 5000, 9, 10],
+    ['Pomada modeladora', 'POM-01', 3500, 1800, 24, 5, 10],
+    ['Shampoo barba', 'SHB-01', 4200, 2200, 15, 5, 10],
+    ['Óleo para barba', 'OLE-01', 3900, 2000, 18, 6, 10],
+    ['Minoxidil 5%', 'MIN-01', 8900, 5000, 9, 3, 10],
   ]
-  const pIns = db.prepare('INSERT INTO products (name, sku, price, cost, stock, commissionPct) VALUES (?,?,?,?,?,?)')
-  products.forEach((p) => pIns.run(...p))
+  const pIns = db.prepare('INSERT INTO products (name, sku, price, cost, stock, minStock, commissionPct) VALUES (?,?,?,?,?,?,?)')
+  const pIds = products.map((p) => Number(pIns.run(...p).lastInsertRowid))
+
+  // Ficha técnica: insumo consumido por execução do serviço (baixa estoque na comanda).
+  const scIns = db.prepare('INSERT INTO service_consumables (serviceId, productId, qty) VALUES (?,?,?)')
+  scIns.run(sIds[1], pIds[2], 1) // Barba consome 1x Óleo para barba
+  scIns.run(sIds[2], pIds[2], 1) // Corte + Barba consome 1x Óleo para barba
+  scIns.run(sIds[2], pIds[0], 1) // Corte + Barba consome 1x Pomada modeladora
+
+  // Extrato de estoque: registra a entrada inicial de cada item, coerente com o estoque atual.
+  const smIns = db.prepare("INSERT INTO stock_movements (productId, type, qty, reason) VALUES (?,'entrada',?,?)")
+  products.forEach((p, i) => smIns.run(pIds[i], p[4], 'Estoque inicial'))
 
   const clients = [
     ['João Pereira', '(54) 98800-1001', 'joao@email.com'],
@@ -41,6 +51,11 @@ export function seed(db) {
   ]
   const cIns = db.prepare('INSERT INTO clients (name, phone, email) VALUES (?,?,?)')
   const cIds = clients.map((c) => Number(cIns.run(...c).lastInsertRowid))
+
+  // Bônus de boas-vindas do programa de fidelidade pra alguns clientes.
+  const lIns = db.prepare("INSERT INTO loyalty_movements (clientId, type, points, reason) VALUES (?,'credito',?,?)")
+  lIns.run(cIds[0], 20, 'Bônus de boas-vindas')
+  lIns.run(cIds[3], 15, 'Bônus de boas-vindas')
 
   // Agenda de hoje: alguns horários espalhados.
   const day = new Date().toISOString().slice(0, 10)
