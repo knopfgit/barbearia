@@ -32,6 +32,19 @@ function blockedMessage(db, barberId, startAt, durationMin) {
   const barber = db.prepare('SELECT name FROM barbers WHERE id = ?').get(barberId)
   return `${barber?.name || 'O profissional'} está indisponível nesse horário (${blocked.reasonLabel}).`
 }
+// Verifica se o horário colide com outro agendamento não cancelado do mesmo barbeiro
+// (double-booking); retorna mensagem de erro em português, ou null se está livre.
+function conflictMessage(db, barberId, startAt, durationMin, excludeId) {
+  const dateStr = String(startAt).slice(0, 10)
+  const startMin = hmToMin(String(startAt).slice(11, 16))
+  if (startMin == null) return null
+  const busy = mergeIntervals(busyByDay(db, barberId, dateStr.slice(0, 7), durationMin, excludeId)[dateStr] || [])
+  const endMin = startMin + durationMin
+  const overlaps = busy.some(([s, e]) => startMin < e && endMin > s)
+  if (!overlaps) return null
+  const barber = db.prepare('SELECT name FROM barbers WHERE id = ?').get(barberId)
+  return `${barber?.name || 'O profissional'} já tem outro agendamento nesse horário.`
+}
 // Brasil não observa horário de verão desde 2019: offset fixo de -3h.
 function nowBR() { return new Date(Date.now() - 3 * 3600 * 1000) }
 function todayBR() { return nowBR().toISOString().slice(0, 10) }
@@ -150,6 +163,8 @@ r.post('/', wrap((req, res) => {
   const durationMin = service ? service.durationMin : 30
   const blockErr = blockedMessage(db, asInt(barberId), startAt, durationMin)
   if (blockErr) return res.status(400).json({ error: blockErr })
+  const conflictErr = conflictMessage(db, asInt(barberId), startAt, durationMin, null)
+  if (conflictErr) return res.status(400).json({ error: conflictErr })
   const info = db.prepare(
     `INSERT INTO appointments (clientId, barberId, serviceId, startAt, durationMin, price, notes)
      VALUES (?,?,?,?,?,?,?)`
@@ -174,6 +189,8 @@ r.put('/:id', wrap((req, res) => {
   if (newBarberId && (newBarberId !== cur.barberId || newStartAt !== cur.startAt)) {
     const blockErr = blockedMessage(db, newBarberId, newStartAt, dur)
     if (blockErr) return res.status(400).json({ error: blockErr })
+    const conflictErr = conflictMessage(db, newBarberId, newStartAt, dur, id)
+    if (conflictErr) return res.status(400).json({ error: conflictErr })
   }
   db.prepare(
     `UPDATE appointments SET clientId=?, barberId=?, serviceId=?, startAt=?, durationMin=?, price=?, notes=?, status=? WHERE id=?`
