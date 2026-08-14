@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
@@ -12,8 +12,26 @@ export default function Agenda() {
   const [clients, setClients] = useState([])
   const [services, setServices] = useState([])
   const [editing, setEditing] = useState(null)
+  const [formKey, setFormKey] = useState(0)
+  const dirtyRef = useRef(false)
   const toast = useToast()
   const navigate = useNavigate()
+
+  function requestOpen(target) {
+    if (editing && dirtyRef.current) {
+      if (!confirm('Você tem um agendamento não finalizado. Deseja descartar?')) return
+    }
+    dirtyRef.current = false
+    setFormKey((k) => k + 1)
+    setEditing(target)
+  }
+  function requestCloseEditing() {
+    if (dirtyRef.current) {
+      if (!confirm('Você tem um agendamento não finalizado. Deseja descartar?')) return
+    }
+    dirtyRef.current = false
+    setEditing(null)
+  }
 
   function load() {
     setAppts(null)
@@ -41,7 +59,7 @@ export default function Agenda() {
     <>
       <div className="page-head">
         <div><div className="eyebrow">Operação</div><h1>Agenda</h1><p>Horários marcados por dia.</p></div>
-        <button className="btn btn--primary" onClick={() => setEditing({})}>Novo agendamento</button>
+        <button className="btn btn--primary" onClick={() => requestOpen({})}>Novo agendamento</button>
       </div>
 
       <div className="agenda-toolbar">
@@ -67,15 +85,16 @@ export default function Agenda() {
             <select className="select btn--sm" style={{ width: 128 }} value={a.status} onChange={(e) => setStatus(a, e.target.value)}>
               {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <button className="btn btn--ghost btn--sm" onClick={() => setEditing(a)}>Editar</button>
+            <button className="btn btn--ghost btn--sm" onClick={() => requestOpen(a)}>Editar</button>
           </div>
         </div>
       ))}
 
       {editing && (
-        <ApptModal appt={editing} date={date} barbers={barbers} clients={clients} services={services}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load() }} />
+        <ApptModal key={formKey} appt={editing} date={date} barbers={barbers} clients={clients} services={services}
+          dirtyRef={dirtyRef}
+          onClose={requestCloseEditing}
+          onSaved={() => { dirtyRef.current = false; setEditing(null); load() }} />
       )}
     </>
   )
@@ -156,7 +175,7 @@ function MiniCalendar({ barberId, selectedDate, excludeId, onSelect }) {
   )
 }
 
-function ApptModal({ appt, date, barbers, clients, services, onClose, onSaved }) {
+function ApptModal({ appt, date, barbers, clients, services, dirtyRef, onClose, onSaved }) {
   const isNew = !appt.id
   const toast = useToast()
   const [apptDate, setApptDate] = useState(appt.startAt ? appt.startAt.slice(0, 10) : date)
@@ -168,6 +187,20 @@ function ApptModal({ appt, date, barbers, clients, services, onClose, onSaved })
   const [busy, setBusy] = useState(false)
   const [slots, setSlots] = useState(null)
   const [slotsError, setSlotsError] = useState(false)
+  const initialRef = useRef({ apptDate, time, clientId, barberId, serviceId, notes })
+
+  useEffect(() => {
+    if (!dirtyRef) return
+    const i = initialRef.current
+    dirtyRef.current = (
+      apptDate !== i.apptDate ||
+      time !== i.time ||
+      String(clientId) !== String(i.clientId) ||
+      String(barberId) !== String(i.barberId) ||
+      String(serviceId) !== String(i.serviceId) ||
+      notes !== i.notes
+    )
+  }, [apptDate, time, clientId, barberId, serviceId, notes, dirtyRef])
 
   const duration = services.find((s) => String(s.id) === String(serviceId))?.durationMin || ''
 
