@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { getDb } from '../db.js'
 import { wrap, asInt, clamp, hmToMin } from './_helpers.js'
-import { isBarberBlocked } from './timeblocks.js'
+import { isBarberBlocked, resolveBlocksForDay } from './timeblocks.js'
 
 const r = Router()
 
@@ -71,6 +71,17 @@ function busyByDay(db, barberId, month, slotMinutes, excludeId) {
   }
   return byDay
 }
+// Intervalos bloqueados (almoço/folga/intervalo) de um barbeiro num dia, no mesmo
+// formato de busyByDay: [[inicioMin, fimMin], ...]. Somados aos agendamentos, fazem
+// o horário bloqueado sumir do seletor de horários livres e contar como ocupado.
+function blockedIntervals(db, barberId, dateStr) {
+  const out = []
+  for (const b of resolveBlocksForDay(db, dateStr, barberId)) {
+    const s = hmToMin(b.startTime), e = hmToMin(b.endTime)
+    if (s != null && e != null) out.push([s, e])
+  }
+  return out
+}
 // Mescla intervalos sobrepostos/adjacentes, ordenados por início.
 function mergeIntervals(intervals) {
   const sorted = [...intervals].sort((a, b) => a[0] - b[0])
@@ -107,7 +118,7 @@ r.get('/availability', wrap((req, res) => {
   const days = {}
   for (let day = 1; day <= daysInMonth; day++) {
     const key = `${month}-${String(day).padStart(2, '0')}`
-    const merged = mergeIntervals(byDay[key] || [])
+    const merged = mergeIntervals([...(byDay[key] || []), ...blockedIntervals(db, barberId, key)])
     let cursor = openMin
     let hasGap = false
     for (const [s, e] of merged) {
@@ -129,7 +140,10 @@ r.get('/slots', wrap((req, res) => {
   const excludeId = req.query.excludeId ? asInt(req.query.excludeId) : null
   const { openMin, closeMin, slotMinutes } = getWorkHours(db)
   const duration = asInt(req.query.durationMin) || slotMinutes
-  const busy = mergeIntervals(busyByDay(db, barberId, date.slice(0, 7), slotMinutes, excludeId)[date] || [])
+  const busy = mergeIntervals([
+    ...(busyByDay(db, barberId, date.slice(0, 7), slotMinutes, excludeId)[date] || []),
+    ...blockedIntervals(db, barberId, date),
+  ])
   const nowFloor = date === todayBR() ? nowMinBR() : -1
   const slots = []
   for (let start = openMin; start + duration <= closeMin; start += slotMinutes) {

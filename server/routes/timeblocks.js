@@ -31,7 +31,7 @@ function validateBlockInput({ barberId, reason, recurrence, weekday, date, start
 // Regras aplicáveis a um dia (pontual na data / diária dentro da vigência / semanal no
 // weekday certo dentro da vigência), já com a exceção do dia resolvida: skip remove o
 // bloqueio, override troca o horário. Uma exceção sempre vence a regra recorrente.
-function resolveBlocksForDay(db, dateStr, barberId) {
+export function resolveBlocksForDay(db, dateStr, barberId) {
   const weekday = weekdayOf(dateStr)
   const cond = [`(
     (tb.recurrence='none' AND tb.date=?)
