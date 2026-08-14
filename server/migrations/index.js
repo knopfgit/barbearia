@@ -208,4 +208,42 @@ export const migrations = [
       `)
     },
   },
+  {
+    id: '0004_time_blocks',
+    up(d) {
+      d.exec(`
+        -- Indisponibilidade de barbeiro (almoço, folga, intervalo...), fora da tabela de
+        -- agendamentos porque não é atendimento de cliente. Uma regra pode ser pontual
+        -- (date), diária ou semanal (weekday), com início/fim de vigência opcionais.
+        CREATE TABLE time_blocks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          barberId INTEGER NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,
+          reason TEXT NOT NULL DEFAULT 'outro',      -- almoco|folga|intervalo|outro
+          recurrence TEXT NOT NULL DEFAULT 'none',   -- none|daily|weekly
+          weekday INTEGER,                           -- 0(Dom)-6(Sáb), só p/ weekly
+          date TEXT,                                 -- YYYY-MM-DD, só p/ none
+          startTime TEXT NOT NULL,                   -- HH:MM
+          endTime TEXT NOT NULL,                     -- HH:MM
+          startDate TEXT,                            -- vigência: a partir de quando (daily/weekly)
+          endDate TEXT,                               -- vigência: até quando (opcional)
+          createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX idx_time_blocks_barber ON time_blocks(barberId);
+
+        -- Exceção de um dia específico dentro de uma regra recorrente. skip = nesse dia
+        -- não há bloqueio; override = nesse dia o bloqueio é em outro horário. Uma exceção
+        -- sempre vence a regra recorrente pro dia em questão.
+        CREATE TABLE time_block_exceptions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          blockId INTEGER NOT NULL REFERENCES time_blocks(id) ON DELETE CASCADE,
+          date TEXT NOT NULL,
+          type TEXT NOT NULL,                        -- skip|override
+          startTime TEXT,                            -- só p/ override
+          endTime TEXT,                               -- só p/ override
+          createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE UNIQUE INDEX idx_time_block_exceptions_unique ON time_block_exceptions(blockId, date);
+      `)
+    },
+  },
 ]

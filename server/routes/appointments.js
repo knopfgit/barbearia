@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getDb } from '../db.js'
 import { wrap, asInt, clamp, hmToMin } from './_helpers.js'
+import { isBarberBlocked } from './timeblocks.js'
 
 const r = Router()
 
@@ -19,6 +20,17 @@ function getWorkHours(db) {
 }
 function minToHm(min) {
   return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
+}
+// Verifica bloqueio de horário do barbeiro (almoço/folga/intervalo/outro); retorna
+// mensagem de erro em português, ou null se o horário está livre.
+function blockedMessage(db, barberId, startAt, durationMin) {
+  const startMin = hmToMin(String(startAt).slice(11, 16))
+  if (startMin == null) return null
+  const endAtISO = `${String(startAt).slice(0, 10)}T${minToHm(startMin + durationMin)}:00`
+  const blocked = isBarberBlocked(db, barberId, String(startAt), endAtISO)
+  if (!blocked) return null
+  const barber = db.prepare('SELECT name FROM barbers WHERE id = ?').get(barberId)
+  return `${barber?.name || 'O profissional'} está indisponível nesse horário (${blocked.reasonLabel}).`
 }
 // Brasil não observa horário de verão desde 2019: offset fixo de -3h.
 function nowBR() { return new Date(Date.now() - 3 * 3600 * 1000) }
@@ -135,11 +147,14 @@ r.post('/', wrap((req, res) => {
   if (!startAt) return res.status(400).json({ error: 'Informe data e hora.' })
   if (!barberId) return res.status(400).json({ error: 'Escolha o profissional.' })
   const service = serviceId ? db.prepare('SELECT * FROM services WHERE id = ?').get(asInt(serviceId)) : null
+  const durationMin = service ? service.durationMin : 30
+  const blockErr = blockedMessage(db, asInt(barberId), startAt, durationMin)
+  if (blockErr) return res.status(400).json({ error: blockErr })
   const info = db.prepare(
     `INSERT INTO appointments (clientId, barberId, serviceId, startAt, durationMin, price, notes)
      VALUES (?,?,?,?,?,?,?)`
   ).run(clientId ? asInt(clientId) : null, asInt(barberId), service ? service.id : null,
-    String(startAt), service ? service.durationMin : 30, service ? service.price : 0, notes || null)
+    String(startAt), durationMin, service ? service.price : 0, notes || null)
   res.status(201).json(db.prepare(`${SELECT} WHERE a.id = ?`).get(info.lastInsertRowid))
 }))
 
@@ -153,6 +168,12 @@ r.put('/:id', wrap((req, res) => {
   if (serviceId !== undefined) {
     const s = serviceId ? db.prepare('SELECT * FROM services WHERE id = ?').get(asInt(serviceId)) : null
     svcId = s ? s.id : null; price = s ? s.price : 0; dur = s ? s.durationMin : cur.durationMin
+  }
+  const newBarberId = barberId !== undefined ? (barberId ? asInt(barberId) : null) : cur.barberId
+  const newStartAt = startAt || cur.startAt
+  if (newBarberId && (newBarberId !== cur.barberId || newStartAt !== cur.startAt)) {
+    const blockErr = blockedMessage(db, newBarberId, newStartAt, dur)
+    if (blockErr) return res.status(400).json({ error: blockErr })
   }
   db.prepare(
     `UPDATE appointments SET clientId=?, barberId=?, serviceId=?, startAt=?, durationMin=?, price=?, notes=?, status=? WHERE id=?`

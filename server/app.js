@@ -19,6 +19,7 @@ import reports from './routes/reports.js'
 import settings from './routes/settings.js'
 import stock from './routes/stock.js'
 import loyalty from './routes/loyalty.js'
+import timeblocks from './routes/timeblocks.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -42,6 +43,7 @@ export function createApp() {
   app.use('/api/settings', settings)
   app.use('/api/stock', stock)
   app.use('/api/loyalty', loyalty)
+  app.use('/api/timeblocks', timeblocks)
 
   // Front compilado (npm run build) servido pelo mesmo processo em produção.
   const dist = join(__dirname, '..', 'dist')
