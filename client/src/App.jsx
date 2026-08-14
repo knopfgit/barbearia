@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth.jsx'
-import { Spinner } from './components.jsx'
+import { Spinner, Logo } from './components.jsx'
 import { initials } from './util.js'
 
 import Login from './pages/Login.jsx'
@@ -44,8 +44,8 @@ function Sidebar({ open, onClose }) {
   return (
     <aside className={`sidebar${open ? ' open' : ''}`}>
       <div className="brand">
-        <div className="brand__mark">B</div>
-        <div className="brand__name">Barbearia<small>Gestão</small></div>
+        <div className="brand__mark"><Logo size={26} /></div>
+        <div className="brand__name">Barbearia Mattos<small>Gestão</small></div>
       </div>
       <nav onClick={onClose}>
         {NAV.map((g) => (
@@ -83,7 +83,7 @@ function Layout() {
       <div>
         <div className="mobile-bar">
           <button className="btn btn--ghost btn--sm" onClick={() => setOpen((o) => !o)}>☰</button>
-          <div className="brand__name" style={{ fontSize: 13 }}>Barbearia</div>
+          <div className="brand__name" style={{ fontSize: 14 }}>Barbearia Mattos</div>
         </div>
         <main className="main">
           <Routes>

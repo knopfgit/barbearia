@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../auth.jsx'
-import { Field } from '../components.jsx'
+import { Field, Logo } from '../components.jsx'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -20,8 +20,8 @@ export default function Login() {
   return (
     <div className="login">
       <form className="login__card" onSubmit={submit}>
-        <div className="login__pole" aria-hidden />
-        <h1>Barbearia</h1>
+        <div className="login__logo"><Logo size={44} /></div>
+        <h1>Barbearia Mattos</h1>
         <p className="login__sub">Entre para gerenciar a operação do dia</p>
         <Field label="E-mail">
           <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
