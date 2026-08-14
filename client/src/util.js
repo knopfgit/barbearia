@@ -30,3 +30,4 @@ export const PAYMENT_LABELS = { dinheiro: 'Dinheiro', debito: 'Débito', credito
 export const STATUS_LABELS = {
   scheduled: 'Agendado', confirmed: 'Confirmado', done: 'Atendido', canceled: 'Cancelado', noshow: 'Faltou',
 }
+export const BLOCK_REASON_LABELS = { almoco: 'Almoço', folga: 'Folga', intervalo: 'Intervalo', outro: 'Bloqueio' }

@@ -236,6 +236,15 @@ label.field { display: block; margin-bottom: 13px; }
 .slot__client { font-weight: 600; font-size: 14.5px; }
 .slot__meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
 
+.slot--block {
+  background: repeating-linear-gradient(135deg, var(--ink-2), var(--ink-2) 9px, var(--ink-3) 9px, var(--ink-3) 18px);
+  border-style: dashed;
+  border-color: var(--line-soft);
+}
+.slot--block:hover { border-color: var(--faint); }
+.slot--block .slot__client { color: var(--muted); }
+.slot--block .slot__meta { color: var(--faint); }
+
 .mini-cal { border: 1px solid var(--line); border-radius: var(--radius); background: var(--ink); padding: 12px; margin-bottom: 14px; }
 .mini-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mini-cal__title { font-size: 13px; font-weight: 600; }
