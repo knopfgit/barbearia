@@ -16,6 +16,7 @@ export default function Agenda() {
   const dirtyRef = useRef(false)
   const [blocks, setBlocks] = useState(null)
   const [blockEditing, setBlockEditing] = useState(null)
+  const [scopePrompt, setScopePrompt] = useState(null)
   const toast = useToast()
   const navigate = useNavigate()
 
@@ -61,10 +62,34 @@ export default function Agenda() {
   }, [appts, blocks])
 
   async function removeBlock(b) {
+    if (b.recurrence !== 'none') { setScopePrompt({ kind: 'delete', block: b }); return }
     if (!confirm('Excluir este bloqueio?')) return
     try {
       await api(`/timeblocks/${b.id}`, { method: 'DELETE' })
       toast.ok('Bloqueio excluído.'); loadBlocks()
+    } catch (e) { toast.erro(e.message) }
+  }
+  async function openEditBlock(b) {
+    try { setBlockEditing(await api(`/timeblocks/${b.id}`)) }
+    catch (e) { toast.erro(e.message) }
+  }
+  async function resolveScope(scope) {
+    const p = scopePrompt
+    setScopePrompt(null)
+    if (!p) return
+    try {
+      if (p.kind === 'delete') {
+        const q = scope === 'occurrence' ? `?scope=occurrence&date=${date}` : ''
+        await api(`/timeblocks/${p.block.id}${q}`, { method: 'DELETE' })
+        toast.ok(scope === 'occurrence' ? 'Bloqueio removido só deste dia.' : 'Bloqueio excluído.')
+      } else {
+        const body = scope === 'occurrence'
+          ? { scope: 'occurrence', date, startTime: p.payload.startTime, endTime: p.payload.endTime }
+          : { scope: 'series', ...p.payload }
+        await api(`/timeblocks/${p.block.id}`, { method: 'PUT', body })
+        toast.ok(scope === 'occurrence' ? 'Horário ajustado só para este dia.' : 'Bloqueio atualizado.')
+      }
+      loadBlocks()
     } catch (e) { toast.erro(e.message) }
   }
 
@@ -127,6 +152,7 @@ export default function Agenda() {
             </div>
           </div>
           <div className="row" style={{ gap: 6 }}>
+            <button className="btn btn--ghost btn--sm" onClick={() => openEditBlock(it.data)}>Editar</button>
             <button className="btn btn--ghost btn--sm" onClick={() => removeBlock(it.data)}>Excluir</button>
           </div>
         </div>
@@ -140,9 +166,21 @@ export default function Agenda() {
       )}
 
       {blockEditing && (
-        <BlockModal barbers={barbers} date={date}
+        <BlockModal block={blockEditing} barbers={barbers} date={date}
           onClose={() => setBlockEditing(null)}
+          onNeedsScope={(payload) => { setScopePrompt({ kind: 'edit', block: blockEditing, payload }); setBlockEditing(null) }}
           onSaved={() => { setBlockEditing(null); loadBlocks() }} />
+      )}
+
+      {scopePrompt && (
+        <ScopeModal
+          text={scopePrompt.kind === 'delete'
+            ? 'Este bloqueio se repete. Excluir só neste dia (o resto da série continua) ou a série inteira?'
+            : 'Este bloqueio se repete. Ajustar o horário só neste dia, ou aplicar profissional/motivo/horário pra série inteira?'}
+          onClose={() => setScopePrompt(null)}
+          onOccurrence={() => resolveScope('occurrence')}
+          onSeries={() => resolveScope('series')}
+        />
       )}
     </>
   )
@@ -327,38 +365,42 @@ function ApptModal({ appt, date, barbers, clients, services, dirtyRef, onClose, 
   )
 }
 
-// Criação de bloqueio de horário (almoço, folga, intervalo...). Edição/exclusão com
-// escolha "este dia vs. série" fica pra quando o bloqueio já existe (ver ScopeModal).
-function BlockModal({ barbers, date, onClose, onSaved }) {
+// Criação/edição de bloqueio de horário (almoço, folga, intervalo...). Editar um
+// bloqueio recorrente não salva direto: devolve o payload pro pai decidir (via
+// ScopeModal) se aplica só nesse dia ou na série inteira.
+function BlockModal({ block = {}, barbers, date, onClose, onSaved, onNeedsScope }) {
+  const isNew = !block.id
   const toast = useToast()
-  const [barberId, setBarberId] = useState(barbers[0]?.id ?? '')
-  const [reason, setReason] = useState('almoco')
-  const [recurrence, setRecurrence] = useState('none')
-  const [weekday, setWeekday] = useState(new Date(date + 'T12:00:00').getDay())
-  const [blockDate, setBlockDate] = useState(date)
-  const [startTime, setStartTime] = useState('12:00')
-  const [endTime, setEndTime] = useState('13:00')
+  const [barberId, setBarberId] = useState(block.barberId || barbers[0]?.id || '')
+  const [reason, setReason] = useState(block.reason || 'almoco')
+  const [recurrence, setRecurrence] = useState(block.recurrence || 'none')
+  const [weekday, setWeekday] = useState(block.weekday ?? new Date(date + 'T12:00:00').getDay())
+  const [blockDate, setBlockDate] = useState(block.date || date)
+  const [startTime, setStartTime] = useState(block.startTime || '12:00')
+  const [endTime, setEndTime] = useState(block.endTime || '13:00')
   const [busy, setBusy] = useState(false)
 
   async function save() {
     if (!barberId) return toast.erro('Escolha o profissional.')
-    setBusy(true)
-    const body = {
+    const payload = {
       barberId, reason, recurrence, startTime, endTime,
       weekday: recurrence === 'weekly' ? weekday : undefined,
       date: recurrence === 'none' ? blockDate : undefined,
     }
+    if (!isNew && block.recurrence !== 'none') { onNeedsScope(payload); return }
+    setBusy(true)
     try {
-      await api('/timeblocks', { method: 'POST', body })
-      toast.ok('Bloqueio criado.'); onSaved()
+      if (isNew) await api('/timeblocks', { method: 'POST', body: payload })
+      else await api(`/timeblocks/${block.id}`, { method: 'PUT', body: payload })
+      toast.ok(isNew ? 'Bloqueio criado.' : 'Bloqueio atualizado.'); onSaved()
     } catch (e) { toast.erro(e.message); setBusy(false) }
   }
 
   return (
-    <Modal title="Bloquear horário" onClose={onClose}
+    <Modal title={isNew ? 'Bloquear horário' : 'Editar bloqueio'} onClose={onClose}
       footer={<>
         <button className="btn" onClick={onClose}>Cancelar</button>
-        <button className="btn btn--primary" onClick={save} disabled={busy}>{busy ? 'Salvando…' : 'Bloquear'}</button>
+        <button className="btn btn--primary" onClick={save} disabled={busy}>{busy ? 'Salvando…' : isNew ? 'Bloquear' : 'Salvar'}</button>
       </>}>
       <Field label="Profissional">
         <select className="select" value={barberId} onChange={(e) => setBarberId(e.target.value)}>
@@ -391,6 +433,20 @@ function BlockModal({ barbers, date, onClose, onSaved }) {
         <Field label="Início"><input className="input" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></Field>
         <Field label="Fim"><input className="input" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></Field>
       </div>
+    </Modal>
+  )
+}
+
+// Pergunta "este dia vs. série" ao editar/excluir um bloqueio recorrente.
+function ScopeModal({ text, onOccurrence, onSeries, onClose }) {
+  return (
+    <Modal title="Bloqueio recorrente" onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>Cancelar</button>
+        <button className="btn" onClick={onOccurrence}>Apenas este dia</button>
+        <button className="btn btn--primary" onClick={onSeries}>Toda a série</button>
+      </>}>
+      <p>{text}</p>
     </Modal>
   )
 }

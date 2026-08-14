@@ -99,6 +99,14 @@ r.get('/', wrap((req, res) => {
   res.json(rows)
 }))
 
+// Regra crua de um bloqueio (não resolvida), usada pra pré-preencher o formulário de
+// edição com os dados da série (weekday/date/vigência), não o horário de um dia isolado.
+r.get('/:id', wrap((req, res) => {
+  const row = getDb().prepare('SELECT * FROM time_blocks WHERE id = ?').get(asInt(req.params.id))
+  if (!row) return res.status(404).json({ error: 'Bloqueio não encontrado.' })
+  res.json(row)
+}))
+
 r.post('/', wrap((req, res) => {
   const db = getDb()
   const { barberId, reason, recurrence, weekday, date, startTime, endTime, startDate, endDate } = req.body || {}
