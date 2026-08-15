@@ -1,70 +1,84 @@
 /* ============================================================================
    Barbearia Mattos · sistema de gestão — folha de estilo única
-   Identidade: madeira escura + dourado + creme, títulos em serifada clássica
-   (Playfair Display), números tabulares para dinheiro, terracota para ações
-   destrutivas.
+   Identidade: azul-petróleo + laranja ferrugem, títulos em serifada clássica
+   (Playfair Display), números tabulares para dinheiro.
+
+   O laranja (--brass) é o acento de AÇÃO: botão primário, item ativo, foco,
+   indicador em destaque. O teal (--green) é estado positivo/disponível.
 
    TODA cor do sistema mora neste bloco :root — nada de cor solta no resto do
    arquivo. Para trocar a identidade, mexa só aqui.
+   (As fontes são carregadas por <link> em client/index.html.)
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
   /* ---- superfícies ---- */
-  --ink:        #1a1410;   /* madeira escura — fundo principal */
-  --ink-2:      #241c15;   /* cards / painéis */
-  --ink-3:      #2e2419;   /* superfície mais alta / hover */
-  --line:       #3a2e22;   /* bordas */
-  --line-soft:  #2b2119;   /* borda sutil */
+  --ink:        #13323a;   /* azul-petróleo — fundo principal */
+  --ink-2:      #1a3f48;   /* cards / painéis */
+  --ink-3:      #224f59;   /* superfície mais alta / hover */
+  --line:       #2c545e;   /* bordas */
+  --line-soft:  #22454e;   /* borda sutil */
 
   /* ---- acentos ---- */
-  --brass:      #c99a4e;   /* dourado principal */
-  --brass-dim:  #a67c3d;   /* dourado escuro */
-  --brass-glow: #e0b568;   /* dourado claro — hover/brilho */
-  --oxblood:    #a4443a;   /* alerta / destrutivo */
-  --green:      #7a8c4f;   /* sucesso / disponível */
-  --blue:       #5f7fa8;   /* informativo (listra do poste) */
+  --brass:      #d95a26;   /* laranja ferrugem — acento de ação */
+  --brass-dim:  #b0461c;   /* laranja escuro */
+  --brass-glow: #e8825a;   /* laranja claro — hover/brilho */
+  --oxblood:    #c0503f;   /* alerta / destrutivo (vermelho terroso) */
+  --green:      #5f9ea0;   /* teal — sucesso / disponível */
+  --blue:       #4a7d99;   /* azul-aço — informativo, distinto do teal */
+  --wood:       #4a3830;   /* marrom/madeira — textura de horário bloqueado */
 
   /* ---- texto ---- */
-  --cream:      #f2e8d5;   /* texto principal */
-  --muted:      #a89880;   /* texto secundário */
-  --faint:      #94876d;   /* texto terciário — claro o bastante p/ passar AA (4.7:1) */
-  --on-brass:   #1f1608;   /* texto escuro sobre superfície dourada */
+  --cream:      #eef2f0;   /* texto principal */
+  --muted:      #96acb3;   /* texto secundário (spec era #8fa6ad: 4.45 — clareado p/ 4.8 e passar AA) */
+  --faint:      #93abb2;   /* texto terciário — derivado p/ passar AA (4.7) */
+  --on-brass:   #24120a;   /* texto escuro sobre o laranja — 4.7, melhor que branco (3.9) */
+
+  /* ---- acentos no papel de TEXTO ----
+     O fundo petróleo é bem mais claro que um preto, então o laranja/teal/
+     vermelho cheios não têm contraste suficiente quando viram texto pequeno.
+     Os acentos acima seguem nos papéis de preenchimento (botão, borda, ponto);
+     estas variantes claras são só para texto sobre superfície escura. */
+  --brass-text:   #ef9370;  /* laranja legível como texto — 4.9 */
+  --green-text:   #7ec4c6;  /* teal legível como texto — 5.7 */
+  --oxblood-text: #e59285;  /* vermelho legível como texto — 4.8 */
 
   /* ---- tons translúcidos derivados dos acentos ---- */
-  --brass-a02:  rgba(201,154,78,.02);
-  --brass-a05:  rgba(201,154,78,.05);
-  --brass-a06:  rgba(201,154,78,.06);
-  --brass-a10:  rgba(201,154,78,.10);
-  --brass-a12:  rgba(201,154,78,.12);
-  --brass-a14:  rgba(201,154,78,.14);
-  --brass-a16:  rgba(201,154,78,.16);
-  --brass-a25:  rgba(201,154,78,.25);
-  --brass-a30:  rgba(201,154,78,.30);
-  --oxblood-a05: rgba(164,68,58,.05);
-  --oxblood-a16: rgba(164,68,58,.16);
-  --green-a16:  rgba(122,140,79,.16);
-  --overlay-bg: rgba(12,8,5,.72);
+  --brass-a02:  rgba(217,90,38,.02);
+  --brass-a05:  rgba(217,90,38,.05);
+  --brass-a06:  rgba(217,90,38,.06);
+  --brass-a10:  rgba(217,90,38,.10);
+  --brass-a12:  rgba(217,90,38,.12);
+  --brass-a14:  rgba(217,90,38,.14);
+  --brass-a16:  rgba(217,90,38,.16);
+  --brass-a25:  rgba(217,90,38,.25);
+  --brass-a30:  rgba(217,90,38,.30);
+  --oxblood-a05: rgba(192,80,63,.05);
+  --oxblood-a16: rgba(192,80,63,.20);
+  --green-a16:  rgba(95,158,160,.20);
+  --overlay-bg: rgba(6,20,24,.74);
 
   /* ---- controles ---- */
-  --btn-hover:      #33281b;
-  --input-focus-bg: #1c150e;
+  --btn-hover:      #2a5b66;
+  --input-focus-bg: #102a31;
 
-  /* ---- estados (badges de agendamento) ---- */
-  --state-gold-fg:  #d8bf8d;  --state-gold-line:  #4d3d24;  --state-gold-bg:  #2b2114;
-  --state-green-fg: #b3c795;  --state-green-line: #3c4629;  --state-green-bg: #212618;
-  --state-blue-fg:  #9db3d0;  --state-blue-line:  #334154;  --state-blue-bg:  #1b222e;
-  --state-red-fg:   #dfa79d;  --state-red-line:   #522e28;  --state-red-bg:   #2d1c18;
+  /* ---- estados (badges de agendamento) ----
+     Sobre fundo petróleo os tints precisam de mais opacidade e borda mais
+     clara que na paleta anterior para não sumirem no azul. */
+  --state-gold-fg:  #f0a074;  --state-gold-line:  #7a3a1c;  --state-gold-bg:  #35251d;
+  --state-green-fg: #7ec4c6;  --state-green-line: #3d6d72;  --state-green-bg: #17383f;
+  --state-blue-fg:  #9dc0d8;  --state-blue-line:  #3a5f75;  --state-blue-bg:  #17333f;
+  --state-red-fg:   #e79a8c;  --state-red-line:   #74352c;  --state-red-bg:   #35211f;
 
   /* ---- ações destrutivas ---- */
-  --danger-fg:       #eecdc6;
-  --danger-line:     #5a312a;
-  --danger-bg:       #32201c;
-  --danger-bg-hover: #452520;
+  --danger-fg:       #f2c4bb;
+  --danger-line:     #7b382e;
+  --danger-bg:       #3a231f;
+  --danger-bg-hover: #4d2c25;
 
   /* ---- níveis de fidelidade ---- */
-  --bronze-fg: #d1936a;  --bronze-line: #66422a;  --bronze-a12: rgba(176,110,62,.12);
-  --prata-fg:  #c5ccd2;  --prata-line:  #525c64;  --prata-a12:  rgba(158,172,186,.12);
+  --bronze-fg: #d9a077;  --bronze-line: #7a5136;  --bronze-a12: rgba(200,130,80,.16);
+  --prata-fg:  #c3d2d6;  --prata-line:  #5d757c;  --prata-a12:  rgba(175,200,208,.16);
 
   --radius:     10px;
   --radius-sm:  7px;
@@ -119,7 +133,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: 0; m
   border: 1px solid var(--line); border-radius: 16px; padding: 40px 32px;
   box-shadow: var(--shadow);
 }
-/* selo da marca no login: tesoura em dourado, anel sutil */
+/* selo da marca no login: tesoura em laranja, anel sutil */
 .login__logo {
   width: 76px; height: 76px; border-radius: 50%; margin: 0 auto 16px;
   display: grid; place-items: center; color: var(--brass);
@@ -161,14 +175,14 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: 0; m
   color: var(--muted); font-size: 13.5px; font-weight: 500; transition: background .12s, color .12s;
 }
 .nav-link:hover { background: var(--ink-3); color: var(--cream); }
-.nav-link.active { background: var(--brass-a14); color: var(--brass-glow); }
+.nav-link.active { background: var(--brass-a14); color: var(--brass-text); }
 .nav-link .ic { width: 17px; text-align: center; opacity: .9; font-size: 15px; }
 
 .sidebar__foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-soft); }
 .user-chip { display: flex; align-items: center; gap: 10px; padding: 8px; }
 .avatar {
   width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none;
-  background: var(--ink-3); border: 1px solid var(--line); color: var(--brass);
+  background: var(--ink-3); border: 1px solid var(--line); color: var(--brass-text);
   font-family: var(--label); font-weight: 600; font-size: 12px;
 }
 .user-chip__name { font-size: 12.5px; font-weight: 600; line-height: 1.2; }
@@ -241,10 +255,10 @@ label.field { display: block; margin-bottom: 13px; }
 .badge--confirmed { color: var(--state-green-fg); border-color: var(--state-green-line); background: var(--state-green-bg); }
 .badge--done { color: var(--state-blue-fg); border-color: var(--state-blue-line); background: var(--state-blue-bg); }
 .badge--canceled, .badge--noshow { color: var(--state-red-fg); border-color: var(--state-red-line); background: var(--state-red-bg); }
-.badge--open { color: var(--brass-glow); border-color: var(--brass-dim); background: var(--brass-a10); }
+.badge--open { color: var(--brass-text); border-color: var(--brass-dim); background: var(--brass-a10); }
 .badge--bronze { color: var(--bronze-fg); border-color: var(--bronze-line); background: var(--bronze-a12); }
 .badge--prata { color: var(--prata-fg); border-color: var(--prata-line); background: var(--prata-a12); }
-.badge--ouro { color: var(--brass-glow); border-color: var(--brass-dim); background: var(--brass-a16); }
+.badge--ouro { color: var(--brass-text); border-color: var(--brass-dim); background: var(--brass-a16); }
 .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
 /* KPI */
@@ -293,8 +307,10 @@ label.field { display: block; margin-bottom: 13px; }
 .slot__client { font-weight: 600; font-size: 14.5px; }
 .slot__meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
 
+/* horário bloqueado: listra em madeira sobre o petróleo — lê como "fechado"
+   e não compete com o laranja de ação nem com o teal de disponível */
 .slot--block {
-  background: repeating-linear-gradient(135deg, var(--ink-2), var(--ink-2) 9px, var(--ink-3) 9px, var(--ink-3) 18px);
+  background: repeating-linear-gradient(135deg, var(--ink-2), var(--ink-2) 9px, var(--wood) 9px, var(--wood) 18px);
   border-style: dashed;
   border-color: var(--line-soft);
 }
@@ -319,38 +335,38 @@ label.field { display: block; margin-bottom: 13px; }
 .mini-cal__day--blank { visibility: hidden; cursor: default; }
 .mini-cal__day--past { background: transparent; color: var(--muted); opacity: .4; cursor: not-allowed; }
 .mini-cal__day--past:hover { border-color: transparent; transform: none; }
-.mini-cal__day--livre { background: var(--green-a16); color: var(--green); }
+.mini-cal__day--livre { background: var(--green-a16); color: var(--green-text); }
 .mini-cal__day--cheio { background: var(--oxblood-a16); color: var(--state-red-fg); }
 .mini-cal__day--selected { border-color: var(--brass); box-shadow: 0 0 0 2px var(--brass-a25); font-weight: 700; }
 
 .slot-pick { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 13px; }
 .slot-pick__btn { padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink-2); color: var(--cream); font-size: 12.5px; cursor: pointer; }
 .slot-pick__btn:hover { border-color: var(--brass-dim); }
-.slot-pick__btn.active { background: var(--brass-a14); color: var(--brass-glow); border-color: var(--brass-dim); }
+.slot-pick__btn.active { background: var(--brass-a14); color: var(--brass-text); border-color: var(--brass-dim); }
 .slot-pick__empty { color: var(--muted); font-size: 12.5px; padding: 4px 0 13px; }
 
 /* ---------- comanda / PDV ---------- */
 .pdv { display: grid; grid-template-columns: 1fr 360px; gap: 18px; align-items: start; }
 .catalog-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
 .chip-tab { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink-2); color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; }
-.chip-tab.active { background: var(--brass-a14); color: var(--brass-glow); border-color: var(--brass-dim); }
+.chip-tab.active { background: var(--brass-a14); color: var(--brass-text); border-color: var(--brass-dim); }
 .catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .cat-item { text-align: left; padding: 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--ink-2); cursor: pointer; transition: border-color .12s, transform .06s; }
 .cat-item:hover { border-color: var(--brass-dim); transform: translateY(-1px); }
 .cat-item:active { transform: translateY(0); }
 .cat-item__name { font-weight: 600; font-size: 13.5px; }
-.cat-item__price { font-family: var(--mono); color: var(--brass); font-size: 13px; margin-top: 6px; }
+.cat-item__price { font-family: var(--mono); color: var(--brass-text); font-size: 13px; margin-top: 6px; }
 .cat-item__sub { font-size: 11px; color: var(--faint); margin-top: 2px; }
 .comanda { position: sticky; top: 20px; }
 .comanda__item { display: flex; gap: 8px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
 .comanda__item .x { color: var(--faint); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 4px; }
-.comanda__item .x:hover { color: var(--oxblood); }
+.comanda__item .x:hover { color: var(--oxblood-text); }
 .comanda__totline { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13.5px; }
 .comanda__totline strong { font-family: var(--mono); }
 .comanda__grand { font-family: var(--label); font-size: 24px; font-weight: 600; }
 .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 14px; }
 .pay-opt { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--ink); text-align: center; cursor: pointer; font-weight: 600; font-size: 13px; }
-.pay-opt.active { border-color: var(--brass); background: var(--brass-a12); color: var(--brass-glow); }
+.pay-opt.active { border-color: var(--brass); background: var(--brass-a12); color: var(--brass-text); }
 
 /* barra de comissão */
 .bar-track { height: 8px; border-radius: 999px; background: var(--ink); overflow: hidden; border: 1px solid var(--line-soft); }
