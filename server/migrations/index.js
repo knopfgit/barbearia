@@ -246,4 +246,20 @@ export const migrations = [
       `)
     },
   },
+  {
+    id: '0005_barber_colors',
+    up(d) {
+      // Realinha a cor de identificação dos profissionais com o tema azul-petróleo
+      // (a mesma lista fica em client/src/pages/Profissionais.jsx). Só mexe em quem
+      // está fora da paleta — cores já corretas ficam como estão — e distribui os
+      // tons ciclando por ordem de id, para dois barbeiros não saírem iguais.
+      const PALETA = ['#d95a26', '#5f9ea0', '#e0a458', '#7a9e6e', '#b0503f', '#6d8fb0', '#a67ca8', '#c77b52']
+      const marcadores = PALETA.map(() => '?').join(',')
+      const fora = d.prepare(
+        `SELECT id FROM barbers WHERE color IS NULL OR color NOT IN (${marcadores}) ORDER BY id`
+      ).all(...PALETA)
+      const upd = d.prepare('UPDATE barbers SET color = ? WHERE id = ?')
+      fora.forEach((b, i) => upd.run(PALETA[i % PALETA.length], b.id))
+    },
+  },
 ]

@@ -4,7 +4,9 @@ import { useToast } from '../toast.jsx'
 import { initials } from '../util.js'
 import { Spinner, Empty, Modal, Field } from '../components.jsx'
 
-const COLORS = ['#c8a15a', '#7aa2f7', '#9ece6a', '#e0af68', '#bb9af7', '#f7768e', '#7dcfff']
+// Cores de identificação do profissional (barrinha na agenda, iniciais no cadastro).
+// Tons afinados com o tema azul-petróleo + laranja — ver :root em styles.css.
+const COLORS = ['#d95a26', '#5f9ea0', '#e0a458', '#7a9e6e', '#b0503f', '#6d8fb0', '#a67ca8', '#c77b52']
 
 export default function Profissionais() {
   const [list, setList] = useState(null)

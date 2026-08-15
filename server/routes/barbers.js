@@ -15,7 +15,7 @@ r.post('/', wrap((req, res) => {
   const { name, phone, color, commissionPct } = req.body || {}
   if (!name || !name.trim()) return res.status(400).json({ error: 'Informe o nome do profissional.' })
   const info = db.prepare('INSERT INTO barbers (name, phone, color, commissionPct) VALUES (?,?,?,?)')
-    .run(name.trim(), phone || null, color || '#c8a15a', clamp(num(commissionPct, 40), 0, 100))
+    .run(name.trim(), phone || null, color || '#d95a26', clamp(num(commissionPct, 40), 0, 100))
   res.status(201).json(db.prepare('SELECT * FROM barbers WHERE id = ?').get(info.lastInsertRowid))
 }))
 

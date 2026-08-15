@@ -4,9 +4,9 @@ export function seed(db) {
   if (db.prepare('SELECT COUNT(*) AS n FROM barbers').get().n > 0) return
 
   const barbers = [
-    ['Rafael Souza', '(54) 99911-0001', '#c8a15a', 50],
-    ['Diego Martins', '(54) 99911-0002', '#7aa2f7', 45],
-    ['Bruno Lima', '(54) 99911-0003', '#9ece6a', 40],
+    ['Rafael Souza', '(54) 99911-0001', '#d95a26', 50],
+    ['Diego Martins', '(54) 99911-0002', '#5f9ea0', 45],
+    ['Bruno Lima', '(54) 99911-0003', '#e0a458', 40],
   ]
   const bIns = db.prepare('INSERT INTO barbers (name, phone, color, commissionPct) VALUES (?,?,?,?)')
   const bIds = barbers.map((b) => Number(bIns.run(...b).lastInsertRowid))
