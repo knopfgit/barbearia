@@ -71,9 +71,8 @@ export default function Configuracoes() {
           <div className="card__head"><h2>Sobre este sistema</h2></div>
           <div className="card__body">
             <p className="muted" style={{ marginTop: 0, fontSize: 13.5, lineHeight: 1.6 }}>
-              Gestão de barbearia com agenda, comanda/PDV, caixa, controle de comissões por
-              profissional e relatório financeiro. Remodelado a partir da arquitetura de um
-              sistema de gestão veterinária (React + Express + SQLite).
+              Sistema de gestão para barbearia: agenda, comanda, caixa, comissões,
+              estoque e fidelidade.
             </p>
             <div className="faint" style={{ fontSize: 12 }}>Versão 1.0.0</div>
           </div>
