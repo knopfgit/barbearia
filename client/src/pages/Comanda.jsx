@@ -38,12 +38,12 @@ export default function Comanda() {
             ) : open.map((t) => (
               <button key={t.id} className="slot" onClick={() => select(t.id)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}>
                 <div className="slot__time" style={{ fontSize: 15, width: 44 }}>#{t.id}</div>
-                <div className="slot__bar" style={{ background: 'var(--brass)' }} />
+                <div className="slot__bar" style={{ background: 'var(--accent)' }} />
                 <div className="slot__main">
                   <div className="slot__client">{t.clientName || 'Avulso'}</div>
                   <div className="slot__meta">{t.barberName || 'Sem profissional'} · aberta {hm(t.openedAt)}</div>
                 </div>
-                <span className="money" style={{ color: 'var(--brass)' }}>{brl(t.total)}</span>
+                <span className="money" style={{ color: 'var(--accent-text)' }}>{brl(t.total)}</span>
               </button>
             ))}
           </div>
@@ -191,7 +191,7 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
               <input className="input" placeholder="Desconto R$" value={discount} onChange={(e) => setDiscount(e.target.value)} style={{ flex: 1 }} />
               <button className="btn btn--sm" onClick={applyDiscount}>Aplicar</button>
             </div>
-            <div className="comanda__totline"><span>Total</span><span className="comanda__grand" style={{ color: 'var(--brass)' }}>{brl(t.total)}</span></div>
+            <div className="comanda__totline"><span>Total</span><span className="comanda__grand" style={{ color: 'var(--accent-text)' }}>{brl(t.total)}</span></div>
             <div className="faint" style={{ fontSize: 11.5, textAlign: 'right', marginTop: 2 }}>comissão total {brl(commissionTotal)}</div>
 
             <div className="eyebrow" style={{ margin: '16px 0 8px' }}>Pagamento</div>

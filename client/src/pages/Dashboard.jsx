@@ -55,7 +55,7 @@ export default function Dashboard() {
             {d.nextAppts?.length ? d.nextAppts.map((a) => (
               <div className="slot" key={a.id} style={{ marginBottom: 8 }}>
                 <div className="slot__time">{hm(a.startAt)}</div>
-                <div className="slot__bar" style={{ background: a.barberColor || 'var(--brass)' }} />
+                <div className="slot__bar" style={{ background: a.barberColor || 'var(--accent)' }} />
                 <div className="slot__main">
                   <div className="slot__client">{a.clientName || 'Sem cliente'}</div>
                   <div className="slot__meta">{a.serviceName || 'Serviço a definir'} · {a.barberName || '—'}</div>
@@ -78,7 +78,7 @@ export default function Dashboard() {
                     <div className="faint" style={{ fontSize: 11.5 }}>comissão {brl(b.commission)}</div>
                   </div>
                 </div>
-                <span className="money" style={{ color: 'var(--brass)' }}>{brl(b.revenue)}</span>
+                <span className="money" style={{ color: 'var(--accent-text)' }}>{brl(b.revenue)}</span>
               </div>
             )) : <Empty mark="♞" title="Sem produção registrada" hint="Feche uma comanda para ver aqui." />}
           </div>

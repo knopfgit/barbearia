@@ -43,7 +43,7 @@ export default function Financeiro() {
                   <div key={b.id} style={{ marginBottom: 14 }}>
                     <div className="spread" style={{ marginBottom: 6 }}>
                       <div className="row" style={{ gap: 9 }}><span className="avatar" style={{ color: b.color }}>{initials(b.name)}</span><strong style={{ fontSize: 13.5 }}>{b.name}</strong></div>
-                      <div className="right"><div className="money" style={{ color: 'var(--brass)' }}>{brl(b.commission)}</div><div className="faint" style={{ fontSize: 11 }}>de {brl(b.revenue)}</div></div>
+                      <div className="right"><div className="money" style={{ color: 'var(--accent-text)' }}>{brl(b.commission)}</div><div className="faint" style={{ fontSize: 11 }}>de {brl(b.revenue)}</div></div>
                     </div>
                     <div className="bar-track"><div className="bar-fill" style={{ width: `${d.byBarber[0].revenue ? (b.revenue / d.byBarber[0].revenue) * 100 : 0}%` }} /></div>
                   </div>
@@ -72,7 +72,7 @@ export default function Financeiro() {
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 160, paddingTop: 10 }}>
                     {d.byDay.map((x) => (
                       <div key={x.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 0 }} title={`${x.day}: ${brl(x.total)}`}>
-                        <div style={{ width: '100%', height: maxDay ? `${Math.max(4, (x.total / maxDay) * 130)}px` : 4, background: 'linear-gradient(180deg, var(--brass), var(--brass-dim))', borderRadius: '4px 4px 0 0' }} />
+                        <div style={{ width: '100%', height: maxDay ? `${Math.max(4, (x.total / maxDay) * 130)}px` : 4, background: 'linear-gradient(180deg, var(--accent), var(--accent-dim))', borderRadius: '4px 4px 0 0' }} />
                         <span className="faint" style={{ fontSize: 9.5, whiteSpace: 'nowrap' }}>{x.day.slice(8)}/{x.day.slice(5, 7)}</span>
                       </div>
                     ))}

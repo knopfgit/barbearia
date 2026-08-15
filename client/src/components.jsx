@@ -5,7 +5,7 @@ export function Spinner() { return <div className="spinner" role="status" aria-l
 
 /**
  * Marca da barbearia: tesoura desenhada em SVG (sem arquivo externo) + nome.
- * `size` em px; a cor vem do CSS (`currentColor`), então o dourado sai da paleta.
+ * `size` em px; a cor vem do CSS (`currentColor`), então o acento sai da paleta.
  *
  * PARA USAR UM LOGO REAL: coloque o arquivo em `client/public/` (ex.: logo.svg)
  * e troque o <svg> abaixo por:

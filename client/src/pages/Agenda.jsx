@@ -126,7 +126,7 @@ export default function Agenda() {
       ) : items.map((it) => it.type === 'appt' ? (
         <div className="slot" key={it.key}>
           <div className="slot__time">{it.time}</div>
-          <div className="slot__bar" style={{ background: it.data.barberColor || 'var(--brass)' }} />
+          <div className="slot__bar" style={{ background: it.data.barberColor || 'var(--accent)' }} />
           <div className="slot__main">
             <div className="slot__client">{it.data.clientName || 'Sem cliente'}</div>
             <div className="slot__meta">{it.data.serviceName || 'Serviço a definir'} · {it.data.barberName || '—'}{it.data.notes ? ` · ${it.data.notes}` : ''}</div>

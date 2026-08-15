@@ -4,7 +4,7 @@ import { wrap, hmToMin } from './_helpers.js'
 
 const r = Router()
 const DEFAULTS = {
-  shopName: 'Barbearia Mattos', address: '', phone: '', accent: '#c99a4e',
+  shopName: 'Barbearia Mattos', address: '', phone: '', accent: '#d95a26',
   openTime: '09:00', closeTime: '19:00', slotMinutes: '30',
   loyaltyEnabled: '1', loyaltyPointsPerReal: '1', loyaltyTierPrata: '10', loyaltyTierOuro: '25',
 }
