@@ -348,6 +348,16 @@ label.field { display: block; margin-bottom: 13px; }
 /* ---------- comanda / PDV ---------- */
 .pdv { display: grid; grid-template-columns: 1fr 360px; gap: 18px; align-items: start; }
 .catalog-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+
+/* "O de sempre": sugestão do serviço habitual do cliente. Discreta de propósito —
+   uma linha acima das abas, sem peso de card, para não competir com o catálogo. */
+.usual {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  border: 1px dashed var(--accent-dim); background: var(--accent-a06);
+}
+.usual__mark { font-size: 14px; line-height: 1; flex: none; }
+.usual__text { flex: 1; min-width: 0; font-size: 13px; }
 .chip-tab { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink-2); color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .chip-tab.active { background: var(--accent-a14); color: var(--accent-text); border-color: var(--accent-dim); }
 .catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }

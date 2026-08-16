@@ -96,6 +96,7 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
   const [payment, setPayment] = useState('')
   const [discount, setDiscount] = useState('')
   const [busy, setBusy] = useState(false)
+  const [usual, setUsual] = useState(null)
   const toast = useToast()
 
   const load = useCallback(() => api(`/tickets/${id}`).then((data) => {
@@ -104,6 +105,14 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
   }), [id, barbers, itemBarber])
   useEffect(() => { load() }, [load])
   useEffect(() => { api('/services').then(setServices); api('/products').then(setProducts) }, [])
+
+  // "O de sempre" do cliente. Comanda avulsa não tem cliente, então nem pergunta;
+  // se der erro ou não houver histórico, fica null e a faixa não aparece.
+  const clientId = t?.clientId
+  useEffect(() => {
+    if (!clientId) { setUsual(null); return }
+    api(`/clients/${clientId}/usual`).then(setUsual).catch(() => setUsual(null))
+  }, [clientId])
 
   async function addItem(kind, item) {
     try { setT(await api(`/tickets/${id}/items`, { method: 'POST', body: { kind, refId: item.id, barberId: itemBarber || t.barberId } })) }
@@ -132,6 +141,10 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
   if (!t) return <Spinner />
   const catalog = tab === 'service' ? services : products
   const commissionTotal = (t.items || []).reduce((s, i) => s + i.commissionValue, 0)
+  // Some assim que o serviço entra na comanda — sugestão cumprida não vira convite
+  // a lançar o mesmo item duas vezes.
+  const jaLancado = (t.items || []).some((i) => i.kind === 'service' && i.refId === usual?.serviceId)
+  const mostraUsual = usual && !jaLancado
 
   return (
     <>
@@ -146,6 +159,16 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
 
       <div className="pdv">
         <div>
+          {mostraUsual && (
+            <div className="usual">
+              <span className="usual__mark" aria-hidden="true">💡</span>
+              <div className="usual__text">
+                <strong>De sempre: {usual.name}</strong>
+                <span className="faint"> — em {usual.visits} das últimas {usual.consideredVisits} visita{usual.consideredVisits > 1 ? 's' : ''} · {brl(usual.price)}</span>
+              </div>
+              <button className="btn btn--sm" onClick={() => addItem('service', { id: usual.serviceId })}>+ Adicionar</button>
+            </div>
+          )}
           <div className="catalog-tabs">
             <button className={`chip-tab${tab === 'service' ? ' active' : ''}`} onClick={() => setTab('service')}>Serviços</button>
             <button className={`chip-tab${tab === 'product' ? ' active' : ''}`} onClick={() => setTab('product')}>Produtos</button>
