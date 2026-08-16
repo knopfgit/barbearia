@@ -7,6 +7,7 @@ import { initials } from './util.js'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Agenda from './pages/Agenda.jsx'
+import Fila from './pages/Fila.jsx'
 import Comanda from './pages/Comanda.jsx'
 import Caixa from './pages/Caixa.jsx'
 import Clientes from './pages/Clientes.jsx'
@@ -22,6 +23,7 @@ const NAV = [
   { group: 'Operação', items: [
     { to: '/', label: 'Painel', icon: '▣', end: true },
     { to: '/agenda', label: 'Agenda', icon: '🗓' },
+    { to: '/fila', label: 'Fila de espera', icon: '⏳' },
     { to: '/comanda', label: 'Comanda / PDV', icon: '✂' },
     { to: '/caixa', label: 'Caixa', icon: '▤' },
   ] },
@@ -89,6 +91,7 @@ function Layout() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/agenda" element={<Agenda />} />
+            <Route path="/fila" element={<Fila />} />
             <Route path="/comanda" element={<Comanda />} />
             <Route path="/caixa" element={<Caixa />} />
             <Route path="/clientes" element={<Clientes />} />
