@@ -262,4 +262,34 @@ export const migrations = [
       fora.forEach((b, i) => upd.run(PALETA[i % PALETA.length], b.id))
     },
   },
+  {
+    id: '0006_fila',
+    up(d) {
+      d.exec(`
+        -- Fila de espera (walk-in), híbrida: a fila é UMA só, por ordem de chegada,
+        -- mas cada pessoa pode pedir um profissional (preferredBarberId). Quem não
+        -- pede é atendido por qualquer um — ver a regra de "chamar próximo" em
+        -- server/routes/queue.js.
+        --
+        -- Quem entra na fila é um cliente cadastrado (clientId) OU um avulso, que
+        -- existe só pelo nome (guestName) — daí o CHECK exigindo um dos dois.
+        -- clientId cascateia na exclusão do cliente (e não SET NULL) justamente por
+        -- causa desse CHECK: anular a coluna deixaria a linha inválida e derrubaria
+        -- a exclusão do cliente. Fila é dado operacional do dia, some junto sem dó.
+        CREATE TABLE queue (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          clientId INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+          guestName TEXT,
+          serviceId INTEGER REFERENCES services(id) ON DELETE SET NULL,
+          preferredBarberId INTEGER REFERENCES barbers(id) ON DELETE SET NULL,
+          status TEXT NOT NULL DEFAULT 'aguardando',  -- aguardando|em_atendimento|finalizado|desistiu
+          createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+          calledAt TEXT,
+          ticketId INTEGER REFERENCES tickets(id) ON DELETE SET NULL,
+          CHECK (clientId IS NOT NULL OR (guestName IS NOT NULL AND trim(guestName) <> ''))
+        );
+        CREATE INDEX idx_queue_status ON queue(status, createdAt);
+      `)
+    },
+  },
 ]

@@ -1,12 +1,9 @@
 import { Router } from 'express'
 import { getDb } from '../db.js'
-import { wrap } from './_helpers.js'
+import { wrap, BR_OFFSET_SQL } from './_helpers.js'
 
 const r = Router()
 
-// Brasil não observa horário de verão desde 2019: offset fixo de -3h (Brasília) para
-// converter timestamps UTC (datetime('now')) no dia-calendário correto nos relatórios.
-const BR_OFFSET_SQL = '-3 hours'
 const today = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10)
 
 // KPIs da tela inicial: faturamento e comandas de hoje, agenda de hoje, caixa.

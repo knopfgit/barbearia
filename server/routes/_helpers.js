@@ -26,6 +26,11 @@ export function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n))
 }
 
+// Brasil não observa horário de verão desde 2019: offset fixo de -3h (Brasília) para
+// converter timestamps UTC (datetime('now')) no dia-calendário correto.
+// Uso: date(coluna, BR_OFFSET_SQL) = date('now', BR_OFFSET_SQL)
+export const BR_OFFSET_SQL = '-3 hours'
+
 // "HH:MM" -> minutos desde 00:00, ou null se inválido.
 export function hmToMin(hm) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(hm || ''))

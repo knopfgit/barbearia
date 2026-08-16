@@ -27,7 +27,7 @@ function reverseConsumablesForItem(db, ticketItemId) {
   }
 }
 
-function loadTicket(db, id) {
+export function loadTicket(db, id) {
   const t = db.prepare(
     `SELECT t.*, c.name AS clientName, b.name AS barberName
      FROM tickets t LEFT JOIN clients c ON c.id = t.clientId
@@ -77,25 +77,42 @@ r.get('/:id', wrap((req, res) => {
   res.json(t)
 }))
 
+/**
+ * Abre uma comanda (walk-in, a partir de um agendamento ou de um item da fila de
+ * espera) e devolve o id. Ponto ÚNICO de criação de comanda — quem precisar abrir
+ * uma (ver server/routes/queue.js) chama isto em vez de repetir a lógica.
+ *
+ * Se vier `appointmentId`, o serviço e o profissional do item saem do agendamento
+ * (e ele é marcado como atendido); senão, um `serviceId` avulso já entra como item.
+ */
+export function createTicket(db, { clientId, barberId, appointmentId, serviceId, notes } = {}) {
+  const info = db.prepare('INSERT INTO tickets (clientId, barberId, appointmentId, notes) VALUES (?,?,?,?)')
+    .run(clientId ? asInt(clientId) : null, barberId ? asInt(barberId) : null,
+      appointmentId ? asInt(appointmentId) : null, notes || null)
+  const id = info.lastInsertRowid
+
+  let itemServiceId = serviceId ? asInt(serviceId) : null
+  let itemBarberId = barberId ? asInt(barberId) : null
+  if (appointmentId) {
+    const ap = db.prepare('SELECT * FROM appointments WHERE id = ?').get(asInt(appointmentId))
+    if (ap) { itemServiceId = ap.serviceId; itemBarberId = ap.barberId }
+    db.prepare("UPDATE appointments SET status='done' WHERE id=?").run(asInt(appointmentId))
+  }
+  if (itemServiceId) {
+    const svc = db.prepare('SELECT * FROM services WHERE id = ?').get(itemServiceId)
+    // Não passar unitPrice aqui: svc.price já está em centavos, e addItem() chama toCents()
+    // (que espera reais) quando unitPrice vem preenchido — passar de novo multiplicaria por 100.
+    if (svc) addItem(db, id, { kind: 'service', refId: svc.id, description: svc.name, barberId: itemBarberId, qty: 1 })
+  }
+  recompute(db, id)
+  return id
+}
+
 // Abre uma comanda (walk-in ou a partir de um agendamento).
 r.post('/', wrap((req, res) => {
   const db = getDb()
   const { clientId, barberId, appointmentId } = req.body || {}
-  const info = db.prepare('INSERT INTO tickets (clientId, barberId, appointmentId) VALUES (?,?,?)')
-    .run(clientId ? asInt(clientId) : null, barberId ? asInt(barberId) : null, appointmentId ? asInt(appointmentId) : null)
-  const id = info.lastInsertRowid
-  // Se veio de um agendamento, já adiciona o serviço agendado como item.
-  if (appointmentId) {
-    const ap = db.prepare('SELECT * FROM appointments WHERE id = ?').get(asInt(appointmentId))
-    if (ap && ap.serviceId) {
-      const svc = db.prepare('SELECT * FROM services WHERE id = ?').get(ap.serviceId)
-      // Não passar unitPrice aqui: svc.price já está em centavos, e addItem() chama toCents()
-      // (que espera reais) quando unitPrice vem preenchido — passar de novo multiplicaria por 100.
-      if (svc) addItem(db, id, { kind: 'service', refId: svc.id, description: svc.name, barberId: ap.barberId, qty: 1 })
-    }
-    db.prepare("UPDATE appointments SET status='done' WHERE id=?").run(asInt(appointmentId))
-  }
-  recompute(db, id)
+  const id = createTicket(db, { clientId, barberId, appointmentId })
   res.status(201).json(loadTicket(db, id))
 }))
 
