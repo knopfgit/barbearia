@@ -19,6 +19,14 @@ export function getDb() {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
   db = new DatabaseSync(path)
   db.exec('PRAGMA foreign_keys = ON;')
+  // Nada impede duas instâncias do sistema abrirem o mesmo arquivo (atalho clicado
+  // duas vezes, `npm start` com o `npm run dev` aberto). No modo padrão, a segunda
+  // faz as escritas da primeira falharem com "database is locked" no meio da
+  // operação — foi assim que apareceram comandas fechadas sem lançamento no caixa.
+  // WAL deixa leitor e escritor conviverem; busy_timeout faz esperar em vez de
+  // estourar na hora. Dois escritores continuam serializados, mas o erro fica raro.
+  db.exec('PRAGMA journal_mode = WAL;')
+  db.exec('PRAGMA busy_timeout = 5000;')
   runMigrations(db)
   return db
 }

@@ -1,6 +1,7 @@
 node_modules/
 dist/
-server/data/*.db
+# o *.db* pega tambem os arquivos -wal e -shm criados pelo modo WAL
+server/data/*.db*
 .env
 # config local do Claude Code (permissões da máquina, não versionar)
 .claude/settings.local.json

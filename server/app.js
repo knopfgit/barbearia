@@ -59,8 +59,16 @@ export function createApp() {
 
   // Tratador central: mensagem em português, status coerente.
   app.use((err, req, res, next) => {
-    console.error(err)
+    // Erro de entrada (4xx) é operação normal — vira uma linha. Stack trace só para
+    // o que é defeito de verdade, senão o log some debaixo de validação recusada.
+    if (err?.status >= 400 && err.status < 500) console.warn(`${req.method} ${req.originalUrl} → ${err.status}: ${err.message}`)
+    else console.error(err)
     if (res.headersSent) return next(err)
+    // SQLITE_BUSY (5): outra instância do sistema está escrevendo no mesmo banco.
+    // Sem isso, o balcão via "database is locked" em inglês, sem saber que era só
+    // esperar e repetir.
+    const ocupado = err?.errcode === 5 || /database (is locked|table is locked)/i.test(err?.message || '')
+    if (ocupado) return res.status(503).json({ error: 'O sistema está ocupado por outro acesso. Tente de novo em instantes.' })
     res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor.' })
   })
 
