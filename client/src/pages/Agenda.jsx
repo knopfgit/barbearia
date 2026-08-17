@@ -172,7 +172,14 @@ export default function Agenda() {
         <ApptModal key={formKey} appt={editing} date={date} barbers={barbers} clients={clients} services={services}
           dirtyRef={dirtyRef}
           onClose={requestCloseEditing}
-          onSaved={() => { dirtyRef.current = false; setEditing(null); load() }} />
+          onSaved={(diaSalvo) => {
+            dirtyRef.current = false
+            setEditing(null)
+            // Um encaixe pode ter jogado o agendamento pra outro dia. Sem isso, a tela
+            // ficaria no dia antigo e pareceria que nada foi salvo.
+            if (diaSalvo && diaSalvo !== date) setDate(diaSalvo)
+            else load()
+          }} />
       )}
 
       {blockEditing && (
@@ -285,6 +292,7 @@ function ApptModal({ appt, date, barbers, clients, services, dirtyRef, onClose, 
   const [busy, setBusy] = useState(false)
   const [slots, setSlots] = useState(null)
   const [slotsError, setSlotsError] = useState(false)
+  const [encaixe, setEncaixe] = useState(null)
   const initialRef = useRef({ apptDate, time, clientId, barberId, serviceId, notes })
 
   useEffect(() => {
@@ -310,6 +318,24 @@ function ApptModal({ appt, date, barbers, clients, services, dirtyRef, onClose, 
     api(`/appointments/slots?barberId=${barberId}&date=${apptDate}${q}`).then(setSlots).catch(() => { setSlots([]); setSlotsError(true) })
   }, [barberId, apptDate, duration])
 
+  // Encaixe: os próximos livres a partir do dia escolhido (e dos seguintes, se o dia
+  // lotou). Sem profissional escolhido, o backend considera qualquer um ativo e diz
+  // quem atende cada horário.
+  useEffect(() => {
+    if (!apptDate) { setEncaixe(null); return }
+    setEncaixe(null)
+    const q = (barberId ? `&barberId=${barberId}` : '') + (serviceId ? `&serviceId=${serviceId}` : '') + (isNew ? '' : `&excludeId=${appt.id}`)
+    api(`/appointments/next-slots?date=${apptDate}${q}`).then(setEncaixe).catch(() => setEncaixe(null))
+  }, [barberId, apptDate, serviceId])
+
+  // Um chip preenche tudo de uma vez: dia, hora e — no modo "qualquer profissional" —
+  // quem vai atender.
+  function usarEncaixe(s) {
+    if (s.date !== apptDate) setApptDate(s.date)
+    if (String(s.barberId) !== String(barberId)) setBarberId(s.barberId)
+    setTime(s.time)
+  }
+
   async function save() {
     if (!barberId) return toast.erro('Escolha o profissional.')
     if (!time) return toast.erro('Escolha um horário.')
@@ -318,7 +344,7 @@ function ApptModal({ appt, date, barbers, clients, services, dirtyRef, onClose, 
     try {
       if (isNew) await api('/appointments', { method: 'POST', body: { clientId, barberId, serviceId, startAt, notes } })
       else await api(`/appointments/${appt.id}`, { method: 'PUT', body: { clientId, barberId, serviceId, startAt, notes } })
-      toast.ok(isNew ? 'Agendamento criado.' : 'Agendamento atualizado.'); onSaved()
+      toast.ok(isNew ? 'Agendamento criado.' : 'Agendamento atualizado.'); onSaved(apptDate)
     } catch (e) { toast.erro(e.message); setBusy(false) }
   }
   async function remove() {
@@ -335,14 +361,47 @@ function ApptModal({ appt, date, barbers, clients, services, dirtyRef, onClose, 
       </>}>
       <Field label="Profissional">
         <select className="select" value={barberId} onChange={(e) => setBarberId(e.target.value)}>
+          <option value="">— Qualquer profissional —</option>
           {barbers.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </Field>
 
       <MiniCalendar barberId={barberId} selectedDate={apptDate} excludeId={isNew ? null : appt.id} onSelect={(d) => { setApptDate(d); setTime('') }} />
 
+      {/* Encaixe: atalho discreto pros próximos livres. Não substitui o seletor
+          completo abaixo nem o horário digitado na mão. */}
+      {encaixe && (
+        <div style={{ margin: '0 0 13px' }}>
+          {encaixe.slots.length === 0 ? (
+            <div className="faint" style={{ fontSize: 12.5 }}>
+              💡 Sem horários próximos — nada livre nos {encaixe.daysSearched} dias seguintes.
+            </div>
+          ) : (
+            <>
+              <div className="faint" style={{ fontSize: 12.5, marginBottom: 7 }}>
+                {encaixe.otherDay
+                  ? `💡 Sem vagas em ${dm(encaixe.requestedDate)} — próximo: ${dm(encaixe.slots[0].date)} às ${encaixe.slots[0].time}`
+                  : '💡 Próximos livres:'}
+              </div>
+              <div className="slot-pick" style={{ margin: 0 }}>
+                {encaixe.slots.map((s) => (
+                  <button type="button" key={`${s.date}-${s.time}-${s.barberId}`}
+                    className={`slot-pick__btn${s.date === apptDate && s.time === time ? ' active' : ''}`}
+                    onClick={() => usarEncaixe(s)}>
+                    {encaixe.otherDay ? `${dm(s.date)} ` : ''}{s.time}
+                    {!barberId ? ` · ${String(s.barberName).split(' ')[0]}` : ''}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <Field label={`Horário livre em ${dmy(apptDate)}`}>
-        {slots === null ? (
+        {!barberId ? (
+          <div className="slot-pick__empty">Escolha o profissional para ver todos os horários do dia — ou use um encaixe acima.</div>
+        ) : slots === null ? (
           <div className="slot-pick__empty">Carregando horários…</div>
         ) : slotsError ? (
           <div className="slot-pick__empty">Não foi possível carregar os horários. Tente trocar de dia ou recarregar a página.</div>

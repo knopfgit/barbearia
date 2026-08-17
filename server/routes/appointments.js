@@ -154,6 +154,84 @@ r.get('/slots', wrap((req, res) => {
   res.json(slots)
 }))
 
+// Encaixe: no máximo 4 sugestões, procurando até 14 dias à frente do dia pedido.
+const MAX_DIAS_BUSCA = 14
+const MAX_SUGESTOES = 4
+
+// Soma dias a "YYYY-MM-DD" usando componentes locais (vira o mês/ano sozinho).
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + n)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Encaixe inteligente: os próximos horários livres a partir de um dia.
+ * ?date=YYYY-MM-DD (obrigatório) &serviceId= &barberId= &excludeId=
+ *
+ * Sem barberId, considera qualquer profissional ATIVO e devolve quem atende cada
+ * horário. Se o dia pedido não tiver vaga, procura nos dias seguintes (até
+ * MAX_DIAS_BUSCA) e devolve as primeiras do primeiro dia que tiver, marcando
+ * otherDay para a tela poder avisar que mudou de dia.
+ *
+ * Não reimplementa regra nenhuma: expediente vem de getWorkHours (config), a
+ * ocupação de busyByDay e os bloqueios de blockedIntervals — que passa por
+ * resolveBlocksForDay e portanto já resolve recorrência e exceção.
+ */
+r.get('/next-slots', wrap((req, res) => {
+  const db = getDb()
+  const date = String(req.query.date || '')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Informe a data (YYYY-MM-DD).' })
+  const excludeId = req.query.excludeId ? asInt(req.query.excludeId) : null
+  const { openMin, closeMin, slotMinutes } = getWorkHours(db)
+  const service = req.query.serviceId
+    ? db.prepare('SELECT durationMin FROM services WHERE id = ?').get(asInt(req.query.serviceId))
+    : null
+  const duration = service?.durationMin || slotMinutes
+
+  let barbeiros
+  if (req.query.barberId) {
+    const b = db.prepare('SELECT id, name FROM barbers WHERE id = ?').get(asInt(req.query.barberId))
+    if (!b) return res.status(400).json({ error: 'Profissional não encontrado.' })
+    barbeiros = [b]
+  } else {
+    barbeiros = db.prepare('SELECT id, name FROM barbers WHERE active = 1 ORDER BY name').all()
+  }
+
+  // Ocupação por barbeiro+mês fica em cache: a varredura cruza vários dias (e às
+  // vezes o mês), e sem isso seria uma consulta por dia por profissional.
+  const cacheMes = new Map()
+  const ocupadoEm = (barberId, dia) => {
+    const chave = `${barberId}|${dia.slice(0, 7)}`
+    if (!cacheMes.has(chave)) cacheMes.set(chave, busyByDay(db, barberId, dia.slice(0, 7), slotMinutes, excludeId))
+    return mergeIntervals([...(cacheMes.get(chave)[dia] || []), ...blockedIntervals(db, barberId, dia)])
+  }
+
+  const hoje = todayBR()
+  const inicio = date < hoje ? hoje : date   // dia no passado: começa de hoje, não de ontem
+  const slots = []
+  let diaEncontrado = null
+
+  for (let i = 0; i <= MAX_DIAS_BUSCA && slots.length === 0; i++) {
+    const dia = addDays(inicio, i)
+    const pisoAgora = dia === hoje ? nowMinBR() : -1
+    const ocupados = new Map(barbeiros.map((b) => [b.id, ocupadoEm(b.id, dia)]))
+    for (let start = openMin; start + duration <= closeMin && slots.length < MAX_SUGESTOES; start += slotMinutes) {
+      if (start < pisoAgora) continue
+      const livre = barbeiros.find((b) => !ocupados.get(b.id).some(([s, e]) => start < e && start + duration > s))
+      if (livre) slots.push({ date: dia, time: minToHm(start), barberId: livre.id, barberName: livre.name })
+    }
+    if (slots.length) diaEncontrado = dia
+  }
+
+  res.json({
+    requestedDate: date,
+    otherDay: !!diaEncontrado && diaEncontrado !== date,
+    slots,
+    daysSearched: MAX_DIAS_BUSCA,
+  })
+}))
+
 // Lista por dia (?date=YYYY-MM-DD) ou intervalo (?from=&to=). Opcional ?barberId.
 r.get('/', wrap((req, res) => {
   const db = getDb()
