@@ -2,10 +2,21 @@
 export function brl(cents) {
   return (Number(cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
-// Converte texto digitado ("45,00" / "45.00" / "45") em número de reais para enviar.
+/**
+ * Converte texto digitado ("45,00" / "45.00" / "1.500,00" / "45") em número de reais.
+ *
+ * CUIDADO com o ponto: ele só é separador de MILHAR quando vêm três dígitos depois
+ * ("1.500,00"). A versão anterior apagava o primeiro ponto sempre, então quem
+ * digitava "150.00" no teclado numérico mandava mil e quinhentos por cento a mais —
+ * R$ 15.000,00 de troco inicial, de sangria ou de desconto. Esta regra é a mesma do
+ * toCents() do servidor (server/routes/_helpers.js); as duas precisam continuar iguais.
+ */
 export function parseMoney(str) {
   if (str == null || str === '') return 0
-  const n = Number(String(str).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.'))
+  const s = String(str).replace(/[^\d,.-]/g, '')
+    .replace(/\.(?=\d{3}\b)/g, '')   // ponto de milhar
+    .replace(',', '.')
+  const n = Number(s)
   return Number.isFinite(n) ? n : 0
 }
 export function hm(iso) {
@@ -44,10 +55,17 @@ export function espera(min) {
  * Devolve null quando não dá pra confiar no número, e aí a tela simplesmente não
  * oferece o botão — link de WhatsApp quebrado abriria conversa com desconhecido.
  *
- * Aceita: DDD + 8 ou 9 dígitos (assume Brasil, prefixa 55) e o mesmo já com o 55
- * na frente. O "0" de interurbano ("0 54 9999-0000") é descartado. Número de outro
- * país cai fora de propósito: aceitar 12-15 dígitos quaisquer deixaria passar
- * telefone digitado errado.
+ * Aceita: DDD + celular de 9 dígitos ou fixo de 8 (assume Brasil, prefixa 55) e o
+ * mesmo já com o 55 na frente. O "0" de interurbano ("0 54 9999-0000") é descartado.
+ *
+ * A checagem NÃO é só de comprimento: um número dos EUA ("+1 415 555 2671") também
+ * tem 11 dígitos e passava como se fosse celular brasileiro, abrindo conversa com um
+ * desconhecido. Por isso o formato é conferido de verdade — celular brasileiro tem
+ * sempre 9 como primeiro dígito do número, e fixo começa entre 2 e 5.
+ *
+ * Efeito colateral aceito: celular antigo guardado com 8 dígitos (sem o 9 na frente)
+ * passa a não gerar botão. Ele também não seria encontrado no WhatsApp, que exige o
+ * nono dígito — melhor não oferecer do que abrir conversa errada.
  */
 export function whatsAppNumero(phone) {
   const digitos = String(phone || '').replace(/\D/g, '').replace(/^0+/, '')
@@ -57,6 +75,10 @@ export function whatsAppNumero(phone) {
   if (!nacional) return null
   const ddd = Number(nacional.slice(0, 2))
   if (!(ddd >= 11 && ddd <= 99)) return null   // não existe DDD abaixo de 11
+  const numero = nacional.slice(2)
+  const ehCelular = numero.length === 9 && numero[0] === '9'
+  const ehFixo = numero.length === 8 && numero[0] >= '2' && numero[0] <= '5'
+  if (!ehCelular && !ehFixo) return null
   return `55${nacional}`
 }
 
