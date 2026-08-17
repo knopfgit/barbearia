@@ -220,6 +220,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: 0; m
 .btn--primary:hover { filter: brightness(1.06); background: linear-gradient(150deg, var(--accent-glow), var(--accent)); }
 .btn--danger { color: var(--danger-fg); border-color: var(--danger-line); background: var(--danger-bg); }
 .btn--danger:hover { background: var(--danger-bg-hover); border-color: var(--oxblood); }
+/* WhatsApp: verde do TEMA (o teal de estado positivo), não o verde da marca —
+   #25D366 brigaria com o azul-petróleo. Usado como <a> também, daí o inline-flex. */
+.btn--zap { color: var(--green-text); border-color: var(--green); background: var(--green-a16); text-decoration: none; }
+.btn--zap:hover { border-color: var(--green-text); background: var(--green-a16); filter: brightness(1.12); }
 .btn--ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn--ghost:hover { background: var(--ink-3); color: var(--cream); }
 .btn--sm { padding: 6px 10px; font-size: 12px; }
@@ -377,6 +381,12 @@ label.field { display: block; margin-bottom: 13px; }
 .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 14px; }
 .pay-opt { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--ink); text-align: center; cursor: pointer; font-weight: 600; font-size: 13px; }
 .pay-opt.active { border-color: var(--accent); background: var(--accent-a12); color: var(--accent-text); }
+
+/* Prévia da mensagem de WhatsApp: o atendente lê antes de abrir a conversa. */
+.zap-msg {
+  padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--line-soft);
+  background: var(--ink); color: var(--cream); font-size: 13px; line-height: 1.5;
+}
 
 /* ---------- fila de espera ---------- */
 /* Lista de quem espera + painel de "chamar próximo" ao lado (vira uma coluna só

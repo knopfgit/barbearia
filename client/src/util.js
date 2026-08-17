@@ -39,6 +39,45 @@ export function espera(min) {
   return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`
 }
 
+/**
+ * Telefone do cliente -> número que o wa.me aceita (só dígitos, com país).
+ * Devolve null quando não dá pra confiar no número, e aí a tela simplesmente não
+ * oferece o botão — link de WhatsApp quebrado abriria conversa com desconhecido.
+ *
+ * Aceita: DDD + 8 ou 9 dígitos (assume Brasil, prefixa 55) e o mesmo já com o 55
+ * na frente. O "0" de interurbano ("0 54 9999-0000") é descartado. Número de outro
+ * país cai fora de propósito: aceitar 12-15 dígitos quaisquer deixaria passar
+ * telefone digitado errado.
+ */
+export function whatsAppNumero(phone) {
+  const digitos = String(phone || '').replace(/\D/g, '').replace(/^0+/, '')
+  const nacional = digitos.length === 12 || digitos.length === 13
+    ? (digitos.startsWith('55') ? digitos.slice(2) : null)
+    : (digitos.length === 10 || digitos.length === 11 ? digitos : null)
+  if (!nacional) return null
+  const ddd = Number(nacional.slice(0, 2))
+  if (!(ddd >= 11 && ddd <= 99)) return null   // não existe DDD abaixo de 11
+  return `55${nacional}`
+}
+
+// URL pronta do WhatsApp, ou null se o telefone não presta (ver whatsAppNumero).
+// Nada é enviado: abre a conversa com o texto preenchido pro atendente conferir.
+export function linkWhatsApp(phone, texto) {
+  const numero = whatsAppNumero(phone)
+  return numero ? `https://wa.me/${numero}?text=${encodeURIComponent(texto)}` : null
+}
+
+// Modelos de mensagem. O nome da barbearia vem de Configurações (settings.shopName).
+export const MSG_WHATSAPP = {
+  confirmacao: ({ nome, barbearia, data, hora }) =>
+    `Oi ${nome}! Confirmando seu horário na ${barbearia} dia ${data} às ${hora}. Até lá! 💈`,
+  lembrete: ({ nome, hora }) =>
+    `Oi ${nome}! Passando pra lembrar do seu horário hoje às ${hora}. Te esperamos! 💈`,
+  // Ficha do cliente: não há horário nenhum, então nada de data inventada — só a
+  // saudação identificando quem está falando.
+  saudacao: ({ nome, barbearia }) => `Oi ${nome}! Aqui é da ${barbearia}. Tudo bem?`,
+}
+
 export function initials(name) {
   return String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 }

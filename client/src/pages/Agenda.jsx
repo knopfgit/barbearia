@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
-import { hm, today, STATUS_LABELS, BLOCK_REASON_LABELS } from '../util.js'
+import { hm, today, linkWhatsApp, whatsAppNumero, MSG_WHATSAPP, STATUS_LABELS, BLOCK_REASON_LABELS } from '../util.js'
 import { Spinner, Empty, StatusBadge, Modal, Field } from '../components.jsx'
 
 export default function Agenda() {
@@ -17,6 +17,8 @@ export default function Agenda() {
   const [blocks, setBlocks] = useState(null)
   const [blockEditing, setBlockEditing] = useState(null)
   const [scopePrompt, setScopePrompt] = useState(null)
+  const [zap, setZap] = useState(null)
+  const [shopName, setShopName] = useState('')
   const toast = useToast()
   const navigate = useNavigate()
 
@@ -50,6 +52,7 @@ export default function Agenda() {
     api('/barbers').then(setBarbers)
     api('/clients').then(setClients)
     api('/services').then(setServices)
+    api('/settings').then((s) => setShopName(s.shopName || '')).catch(() => {})
   }, [])
 
   const items = useMemo(() => {
@@ -133,6 +136,13 @@ export default function Agenda() {
           </div>
           <StatusBadge status={it.data.status} />
           <div className="row" style={{ gap: 6 }}>
+            {/* Só aparece com telefone aproveitável — sem cliente ou com número
+                torto, a linha fica limpa em vez de oferecer um botão morto. */}
+            {whatsAppNumero(it.data.clientPhone) && (
+              <button className="btn btn--sm btn--zap" title="Avisar no WhatsApp"
+                aria-label={`Avisar ${it.data.clientName} no WhatsApp`}
+                onClick={() => setZap(it.data)}>💬</button>
+            )}
             {it.data.status !== 'done' && <button className="btn btn--sm" onClick={() => openTicket(it.data)}>Comanda →</button>}
             <select className="select btn--sm" style={{ width: 128 }} value={it.data.status} onChange={(e) => setStatus(it.data, e.target.value)}>
               {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -171,6 +181,8 @@ export default function Agenda() {
           onNeedsScope={(payload) => { setScopePrompt({ kind: 'edit', block: blockEditing, payload }); setBlockEditing(null) }}
           onSaved={() => { setBlockEditing(null); loadBlocks() }} />
       )}
+
+      {zap && <ZapModal appt={zap} shopName={shopName} onClose={() => setZap(null)} />}
 
       {scopePrompt && (
         <ScopeModal
@@ -433,6 +445,61 @@ function BlockModal({ block = {}, barbers, date, onClose, onSaved, onNeedsScope 
         <Field label="Início"><input className="input" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></Field>
         <Field label="Fim"><input className="input" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></Field>
       </div>
+    </Modal>
+  )
+}
+
+// "DD/MM" a partir de "YYYY-MM-DD", sem passar por Date (evita parse como UTC).
+function dm(dateStr) {
+  const [, m, d] = dateStr.split('-')
+  return `${d}/${m}`
+}
+
+/**
+ * Mensagem pronta de WhatsApp para um agendamento. NÃO envia nada: cada opção é um
+ * link que abre a conversa com o texto preenchido, e quem manda é o atendente.
+ * A mensagem aparece inteira aqui justamente para ser conferida antes.
+ *
+ * O lembrete só é oferecido no dia do horário — o texto diz "seu horário hoje", e
+ * mandá-lo numa terça para um horário de sexta seria informação errada saindo em
+ * nome da barbearia.
+ */
+function ZapModal({ appt, shopName, onClose }) {
+  const nome = String(appt.clientName || '').trim().split(/\s+/)[0] || 'tudo bem'
+  const barbearia = shopName || 'Barbearia'
+  const hora = hm(appt.startAt)
+  const dia = String(appt.startAt).slice(0, 10)
+  const numero = whatsAppNumero(appt.clientPhone)
+
+  const opcoes = [
+    { chave: 'confirmacao', titulo: 'Confirmar horário', texto: MSG_WHATSAPP.confirmacao({ nome, barbearia, data: dm(dia), hora }) },
+  ]
+  if (dia === today()) {
+    opcoes.push({ chave: 'lembrete', titulo: 'Lembrar (horário é hoje)', texto: MSG_WHATSAPP.lembrete({ nome, hora }) })
+  }
+
+  return (
+    <Modal title={`WhatsApp · ${appt.clientName}`} onClose={onClose}
+      footer={<button className="btn" onClick={onClose}>Fechar</button>}>
+      <p className="faint" style={{ fontSize: 12.5, marginBottom: 14 }}>
+        Abre a conversa com <strong>+{numero}</strong> e o texto já escrito. Nada é enviado
+        automaticamente — confira e mande você mesmo.
+      </p>
+      {opcoes.map((o) => (
+        <div key={o.chave} style={{ marginBottom: 14 }}>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>{o.titulo}</div>
+          <div className="zap-msg">{o.texto}</div>
+          <a className="btn btn--sm btn--zap" href={linkWhatsApp(appt.clientPhone, o.texto)}
+            target="_blank" rel="noopener" onClick={onClose} style={{ marginTop: 8 }}>
+            💬 Abrir no WhatsApp
+          </a>
+        </div>
+      ))}
+      {opcoes.length === 1 && (
+        <p className="faint" style={{ fontSize: 12 }}>
+          O lembrete (“seu horário hoje”) aparece aqui no dia do agendamento.
+        </p>
+      )}
     </Modal>
   )
 }

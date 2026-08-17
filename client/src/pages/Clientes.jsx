@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
-import { brl } from '../util.js'
+import { brl, linkWhatsApp, MSG_WHATSAPP } from '../util.js'
 import { Spinner, Empty, Modal, Field } from '../components.jsx'
 
 export default function Clientes() {
@@ -48,11 +48,21 @@ function ClientModal({ client, onClose, onSaved }) {
   const isNew = !client.id
   const [f, setF] = useState({ name: client.name || '', phone: client.phone || '', email: client.email || '', birthdate: client.birthdate || '', notes: client.notes || '' })
   const [history, setHistory] = useState([])
+  const [shopName, setShopName] = useState('')
   const [busy, setBusy] = useState(false)
   const toast = useToast()
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
 
   useEffect(() => { if (!isNew) api(`/clients/${client.id}`).then((d) => setHistory(d.history || [])) }, [])
+  useEffect(() => { api('/settings').then((s) => setShopName(s.shopName || '')).catch(() => {}) }, [])
+
+  // Sem horário nenhum aqui, então nada de data inventada: a mensagem é só a
+  // saudação identificando a barbearia. Segue o campo enquanto é digitado, então
+  // corrigir o telefone já libera o botão.
+  const linkZap = linkWhatsApp(f.phone, MSG_WHATSAPP.saudacao({
+    nome: String(f.name || '').trim().split(/\s+/)[0] || 'tudo bem',
+    barbearia: shopName || 'Barbearia',
+  }))
 
   async function save() {
     if (!f.name.trim()) return toast.erro('Informe o nome.')
@@ -79,6 +89,14 @@ function ClientModal({ client, onClose, onSaved }) {
       <div className="cols-2">
         <Field label="Telefone"><input className="input" value={f.phone} onChange={set('phone')} /></Field>
         <Field label="Nascimento"><input className="input" type="date" value={f.birthdate || ''} onChange={set('birthdate')} /></Field>
+      </div>
+      <div className="row" style={{ margin: '-4px 0 14px' }}>
+        {linkZap ? (
+          <a className="btn btn--sm btn--zap" href={linkZap} target="_blank" rel="noopener">💬 Abrir no WhatsApp</a>
+        ) : (
+          <button className="btn btn--sm" disabled title="Cliente sem telefone válido para WhatsApp">💬 Abrir no WhatsApp</button>
+        )}
+        {!linkZap && <span className="faint" style={{ fontSize: 12 }}>Cliente sem telefone válido para WhatsApp.</span>}
       </div>
       <Field label="E-mail"><input className="input" type="email" value={f.email} onChange={set('email')} /></Field>
       <Field label="Observações"><input className="input" value={f.notes} onChange={set('notes')} /></Field>
