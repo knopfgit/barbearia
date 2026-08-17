@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getDb } from '../db.js'
+import { getDb, runInTransaction } from '../db.js'
 import { requireAdmin } from '../auth.js'
 import { wrap, toCents, asInt } from './_helpers.js'
 
@@ -71,12 +71,18 @@ r.post('/close', requireAdmin, wrap((req, res) => {
   const session = currentSession(db)
   if (!session) return res.status(400).json({ error: 'Nenhum caixa aberto.' })
   const counted = toCents(req.body?.closingCounted)
-  const expected = expectedCash(db, session)
-  db.prepare(
-    `UPDATE cash_sessions SET status='closed', closedBy=?, closedAt=datetime('now'),
-     closingCounted=?, expectedCash=?, difference=?, notes=? WHERE id=?`
-  ).run(req.user?.id || null, counted, expected, counted - expected, req.body?.notes || null, session.id)
-  res.json({ ...db.prepare('SELECT * FROM cash_sessions WHERE id = ?').get(session.id), expected, counted, difference: counted - expected })
+  // Grava uma tabela só, mas é LER-DEPOIS-GRAVAR: o esperado é somado dos movimentos e
+  // depois gravado. Sem transação, uma venda lançada entre a soma e a gravação faria o
+  // caixa fechar com um esperado já velho, e a diferença registrada seria falsa.
+  const fechado = runInTransaction(db, () => {
+    const expected = expectedCash(db, session)
+    db.prepare(
+      `UPDATE cash_sessions SET status='closed', closedBy=?, closedAt=datetime('now'),
+       closingCounted=?, expectedCash=?, difference=?, notes=? WHERE id=?`
+    ).run(req.user?.id || null, counted, expected, counted - expected, req.body?.notes || null, session.id)
+    return { ...db.prepare('SELECT * FROM cash_sessions WHERE id = ?').get(session.id), expected, counted, difference: counted - expected }
+  })
+  res.json(fechado)
 }))
 
 r.get('/history', wrap((req, res) => {

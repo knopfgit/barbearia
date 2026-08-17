@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getDb } from '../db.js'
+import { getDb, runInTransaction } from '../db.js'
 import { wrap, asInt, num } from './_helpers.js'
 
 const r = Router()
@@ -42,14 +42,20 @@ r.post('/movements', wrap((req, res) => {
   }
   if (delta === 0) return res.status(400).json({ error: 'Essa movimentação não muda o estoque atual.' })
 
-  db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(delta, product.id)
-  const info = db.prepare(
-    'INSERT INTO stock_movements (productId, type, qty, reason, userId) VALUES (?,?,?,?,?)'
-  ).run(product.id, type, delta, reason || null, req.user?.id || null)
-  res.status(201).json({
-    movement: db.prepare('SELECT * FROM stock_movements WHERE id = ?').get(info.lastInsertRowid),
-    product: db.prepare('SELECT * FROM products WHERE id = ?').get(product.id),
+  // O saldo e o extrato são gravados juntos: sem transação, uma falha entre os dois
+  // mudava o estoque sem deixar linha no extrato, e o inventário deixava de ser
+  // reconciliável (a soma das movimentações não bateria com o saldo).
+  const resultado = runInTransaction(db, () => {
+    db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(delta, product.id)
+    const info = db.prepare(
+      'INSERT INTO stock_movements (productId, type, qty, reason, userId) VALUES (?,?,?,?,?)'
+    ).run(product.id, type, delta, reason || null, req.user?.id || null)
+    return {
+      movement: db.prepare('SELECT * FROM stock_movements WHERE id = ?').get(info.lastInsertRowid),
+      product: db.prepare('SELECT * FROM products WHERE id = ?').get(product.id),
+    }
   })
+  res.status(201).json(resultado)
 }))
 
 // Consumo de insumos por serviço num período (a partir do snapshot em ticket_item_consumables).
