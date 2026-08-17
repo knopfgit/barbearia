@@ -121,12 +121,41 @@ r.post('/', wrap((req, res) => {
   res.status(201).json(loadTicket(db, id))
 }))
 
+// Erro de entrada: o tratador central respeita err.status e devolve a mensagem.
+function erro400(mensagem) {
+  return Object.assign(new Error(mensagem), { status: 400 })
+}
+
+const MAX_QTY = 999
+const MAX_UNIT = 100000000   // R$ 1.000.000,00 em centavos
+
 function addItem(db, ticketId, { kind, refId, description, barberId, qty, unitPrice }) {
+  // Sem validação, a API aceitava kind inventado, preço negativo (que virava receita
+  // e comissão negativas no relatório) e quantidade absurda — que gravava um total
+  // acima do que o JavaScript representa e deixava a comanda ilegível pra sempre.
+  if (kind !== 'service' && kind !== 'product') throw erro400('Tipo de item inválido.')
   let ref = null
   if (kind === 'service' && refId) ref = db.prepare('SELECT * FROM services WHERE id = ?').get(asInt(refId))
   if (kind === 'product' && refId) ref = db.prepare('SELECT * FROM products WHERE id = ?').get(asInt(refId))
-  const q = Math.max(1, asInt(qty, 1))
+  if (refId && !ref) throw erro400(kind === 'service' ? 'Serviço não encontrado.' : 'Produto não encontrado.')
+  if (barberId && !db.prepare('SELECT id FROM barbers WHERE id = ?').get(asInt(barberId))) {
+    throw erro400('Profissional não encontrado.')
+  }
+
+  const q = asInt(qty, 1)
+  if (q < 1 || q > MAX_QTY) throw erro400(`Quantidade deve ser entre 1 e ${MAX_QTY}.`)
   const unit = unitPrice != null ? toCents(unitPrice) : (ref ? ref.price : 0)
+  if (unit < 0) throw erro400('Preço do item não pode ser negativo.')
+  if (unit > MAX_UNIT) throw erro400('Valor do item acima do permitido.')
+
+  // Produto é venda: não dá pra vender o que não tem, e deixar o estoque negativo
+  // envenena o alerta de estoque baixo e a análise de consumo. Insumo consumido por
+  // serviço NÃO é barrado de propósito (ver consumeForServiceItem): ali o consumo já
+  // aconteceu na cadeira, e barrar impediria de lançar um atendimento já feito.
+  if (kind === 'product' && ref && ref.stock < q) {
+    throw erro400(`Estoque insuficiente de ${ref.name}: restam ${ref.stock}.`)
+  }
+
   const total = unit * q
   const pct = commissionPctFor(db, kind, ref, barberId ? asInt(barberId) : null)
   const commissionValue = Math.round(total * pct / 100)
@@ -149,9 +178,14 @@ r.post('/:id/items', wrap((req, res) => {
   res.status(201).json(loadTicket(db, id))
 }))
 
+// Era o único handler de comanda sem esta guarda. Sem ela, remover item de comanda
+// FECHADA deixava o relatório menor que o caixa, sem trilha nenhuma; e de comanda
+// CANCELADA devolvia o estoque uma segunda vez (o cancelamento já tinha devolvido).
 r.delete('/:id/items/:itemId', wrap((req, res) => {
   const db = getDb()
   const id = asInt(req.params.id)
+  const t = db.prepare('SELECT status FROM tickets WHERE id = ?').get(id)
+  if (!t || t.status !== 'open') return res.status(400).json({ error: 'Comanda não está aberta.' })
   const item = db.prepare('SELECT * FROM ticket_items WHERE id = ? AND ticketId = ?').get(asInt(req.params.itemId), id)
   if (!item) return res.status(404).json({ error: 'Item não encontrado.' })
   if (item.kind === 'product' && item.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(item.qty, item.refId)
@@ -169,6 +203,12 @@ r.put('/:id', wrap((req, res) => {
   if (!t || t.status !== 'open') return res.status(400).json({ error: 'Comanda não está aberta.' })
   const { discount, clientId, barberId, notes } = req.body || {}
   if (discount != null && toCents(discount) < 0) return res.status(400).json({ error: 'Desconto não pode ser negativo.' })
+  // Sem teto, um "100000" digitado no campo zerava a comanda (o total é clampado em 0)
+  // mas gravava o desconto inteiro, que ia inflar o relatório de descontos — e a
+  // comissão do item continuava sendo paga sobre o valor cheio.
+  if (discount != null && toCents(discount) > t.subtotal) {
+    return res.status(400).json({ error: `O desconto não pode ser maior que o valor da comanda (${(t.subtotal / 100).toFixed(2).replace('.', ',')}).` })
+  }
   db.prepare('UPDATE tickets SET discount=?, clientId=?, barberId=?, notes=? WHERE id=?')
     .run(discount != null ? toCents(discount) : t.discount,
       clientId !== undefined ? (clientId ? asInt(clientId) : null) : t.clientId,
