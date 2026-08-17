@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
 import { brl, hm, utcDate, PAYMENT_LABELS, parseMoney } from '../util.js'
-import { Spinner, Empty, Field } from '../components.jsx'
+import { Spinner, Empty, Field, Modal } from '../components.jsx'
 
 export default function Comanda() {
   const [params, setParams] = useSearchParams()
@@ -97,6 +97,7 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
   const [discount, setDiscount] = useState('')
   const [busy, setBusy] = useState(false)
   const [usual, setUsual] = useState(null)
+  const [semEstoque, setSemEstoque] = useState(null)
   const toast = useToast()
 
   const load = useCallback(() => api(`/tickets/${id}`).then((data) => {
@@ -104,7 +105,10 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
     if (!itemBarber) setItemBarber(data.barberId || barbers[0]?.id || '')
   }), [id, barbers, itemBarber])
   useEffect(() => { load() }, [load])
-  useEffect(() => { api('/services').then(setServices); api('/products').then(setProducts) }, [])
+  // Os produtos são relidos a cada item lançado: o estoque muda no servidor, e é dele
+  // que sai o aviso de saldo negativo (tanto no catálogo quanto na linha da comanda).
+  const loadProducts = useCallback(() => api('/products').then(setProducts).catch(() => {}), [])
+  useEffect(() => { api('/services').then(setServices); loadProducts() }, [loadProducts])
 
   // "O de sempre" do cliente. Comanda avulsa não tem cliente, então nem pergunta;
   // se der erro ou não houver histórico, fica null e a faixa não aparece.
@@ -114,12 +118,26 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
     api(`/clients/${clientId}/usual`).then(setUsual).catch(() => setUsual(null))
   }, [clientId])
 
-  async function addItem(kind, item) {
-    try { setT(await api(`/tickets/${id}/items`, { method: 'POST', body: { kind, refId: item.id, barberId: itemBarber || t.barberId } })) }
-    catch (e) { toast.erro(e.message) }
+  /**
+   * Lança item na comanda. Produto sem estoque não é barrado nem passa batido: o
+   * servidor devolve 409 pedindo confirmação, a tela pergunta, e só com o "sim"
+   * (confirmarSemEstoque) a venda acontece.
+   */
+  async function addItem(kind, item, confirmarSemEstoque = false) {
+    try {
+      const body = { kind, refId: item.id, barberId: itemBarber || t.barberId }
+      if (confirmarSemEstoque) body.confirmarSemEstoque = true
+      setT(await api(`/tickets/${id}/items`, { method: 'POST', body }))
+      setSemEstoque(null)
+      loadProducts()
+    } catch (e) {
+      if (e.status === 409 && e.data?.needsConfirm) setSemEstoque({ kind, item, ...e.data })
+      else { setSemEstoque(null); toast.erro(e.message) }
+    }
   }
   async function removeItem(itemId) {
     setT(await api(`/tickets/${id}/items/${itemId}`, { method: 'DELETE' }))
+    loadProducts()   // remover devolve ao estoque
   }
   async function applyDiscount() {
     setT(await api(`/tickets/${id}`, { method: 'PUT', body: { discount: parseMoney(discount) } }))
@@ -141,6 +159,10 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
   if (!t) return <Spinner />
   const catalog = tab === 'service' ? services : products
   const commissionTotal = (t.items || []).reduce((s, i) => s + i.commissionValue, 0)
+  // Rastro da venda sem estoque: sai do saldo atual do produto, não de uma marca em
+  // memória — assim continua visível depois de recarregar a página.
+  const estoqueNegativo = (item) => item.kind === 'product' && item.refId
+    && (products.find((p) => p.id === item.refId)?.stock ?? 0) < 0
   // Some assim que o serviço entra na comanda — sugestão cumprida não vira convite
   // a lançar o mesmo item duas vezes.
   const jaLancado = (t.items || []).some((i) => i.kind === 'service' && i.refId === usual?.serviceId)
@@ -183,7 +205,9 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
               <button key={item.id} className="cat-item" onClick={() => addItem(tab, item)}>
                 <div className="cat-item__name">{item.name}</div>
                 <div className="cat-item__price">{brl(item.price)}</div>
-                <div className="cat-item__sub">{tab === 'service' ? `${item.durationMin} min` : `estoque: ${item.stock}`}</div>
+                <div className="cat-item__sub" style={tab === 'product' && item.stock < 0 ? { color: 'var(--oxblood-text)' } : undefined}>
+                  {tab === 'service' ? `${item.durationMin} min` : `estoque: ${item.stock}`}
+                </div>
               </button>
             ))}
             {catalog.length === 0 && <Empty mark="▦" title="Nada cadastrado ainda" />}
@@ -201,6 +225,9 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
                   <div style={{ fontWeight: 600, fontSize: 13.5 }}>{i.description}</div>
                   <div className="faint" style={{ fontSize: 11.5 }}>
                     {i.barberName || '—'} · comissão {i.commissionPct}% = {brl(i.commissionValue)}
+                    {estoqueNegativo(i) && (
+                      <span style={{ color: 'var(--oxblood-text)' }}> · ⚠ estoque negativo</span>
+                    )}
                   </div>
                 </div>
                 <span className="money" style={{ fontSize: 13 }}>{brl(i.total)}</span>
@@ -229,6 +256,27 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
           </div>
         </div>
       </div>
+
+      {semEstoque && (
+        <Modal title="Estoque insuficiente" onClose={() => setSemEstoque(null)}
+          footer={<>
+            <button className="btn" onClick={() => setSemEstoque(null)}>Cancelar</button>
+            <button className="btn btn--primary" onClick={() => addItem(semEstoque.kind, semEstoque.item, true)}>Vender assim</button>
+          </>}>
+          <p style={{ marginTop: 0 }}>
+            <strong>{semEstoque.produto}</strong>{' '}
+            {semEstoque.disponivel > 0
+              ? `tem só ${semEstoque.disponivel} em estoque e você está lançando ${semEstoque.pedido}.`
+              : semEstoque.disponivel === 0
+                ? 'está com o estoque zerado.'
+                : `já está com o estoque negativo (${semEstoque.disponivel}).`}
+          </p>
+          <p className="muted" style={{ marginBottom: 0, fontSize: 13, lineHeight: 1.5 }}>
+            Vender assim mesmo deixa o estoque negativo e a diferença vai precisar de
+            ajuste em Estoque. A venda entra normalmente na comanda e no caixa.
+          </p>
+        </Modal>
+      )}
     </>
   )
 }

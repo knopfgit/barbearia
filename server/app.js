@@ -69,7 +69,9 @@ export function createApp() {
     // esperar e repetir.
     const ocupado = err?.errcode === 5 || /database (is locked|table is locked)/i.test(err?.message || '')
     if (ocupado) return res.status(503).json({ error: 'O sistema está ocupado por outro acesso. Tente de novo em instantes.' })
-    res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor.' })
+    // `extras` deixa a rota mandar junto o que a tela precisa pra reagir (ex.: pedir
+    // confirmação de venda sem estoque), em vez de só a mensagem.
+    res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor.', ...(err.extras || {}) })
   })
 
   return app

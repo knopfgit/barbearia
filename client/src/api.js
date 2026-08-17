@@ -3,8 +3,10 @@ const TOKEN_KEY = 'barbearia.token'
 export function getToken() { return localStorage.getItem(TOKEN_KEY) }
 export function setToken(t) { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY) }
 
+// `data` guarda o corpo da resposta com erro: algumas rotas mandam junto o que a
+// tela precisa pra reagir (ex.: needsConfirm na venda sem estoque), não só a mensagem.
 export class ApiError extends Error {
-  constructor(message, status) { super(message); this.status = status }
+  constructor(message, status, data) { super(message); this.status = status; this.data = data }
 }
 
 export async function api(path, { method = 'GET', body } = {}) {
@@ -20,7 +22,7 @@ export async function api(path, { method = 'GET', body } = {}) {
   }
   let data = null
   try { data = await res.json() } catch { /* sem corpo */ }
-  if (!res.ok) throw new ApiError(data?.error || recadoPadrao(res.status), res.status)
+  if (!res.ok) throw new ApiError(data?.error || recadoPadrao(res.status), res.status, data)
   return data
 }
 

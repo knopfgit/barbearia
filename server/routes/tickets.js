@@ -125,11 +125,16 @@ r.post('/', wrap((req, res) => {
 function erro400(mensagem) {
   return Object.assign(new Error(mensagem), { status: 400 })
 }
+// Erro que pede uma decisão do balcão em vez de simplesmente barrar: `extras` vai
+// junto no corpo da resposta pra tela saber o que perguntar.
+function erroConfirma(mensagem, extras) {
+  return Object.assign(new Error(mensagem), { status: 409, extras })
+}
 
 const MAX_QTY = 999
 const MAX_UNIT = 100000000   // R$ 1.000.000,00 em centavos
 
-function addItem(db, ticketId, { kind, refId, description, barberId, qty, unitPrice }) {
+function addItem(db, ticketId, { kind, refId, description, barberId, qty, unitPrice, confirmarSemEstoque }) {
   // Sem validação, a API aceitava kind inventado, preço negativo (que virava receita
   // e comissão negativas no relatório) e quantidade absurda — que gravava um total
   // acima do que o JavaScript representa e deixava a comanda ilegível pra sempre.
@@ -148,12 +153,16 @@ function addItem(db, ticketId, { kind, refId, description, barberId, qty, unitPr
   if (unit < 0) throw erro400('Preço do item não pode ser negativo.')
   if (unit > MAX_UNIT) throw erro400('Valor do item acima do permitido.')
 
-  // Produto é venda: não dá pra vender o que não tem, e deixar o estoque negativo
-  // envenena o alerta de estoque baixo e a análise de consumo. Insumo consumido por
-  // serviço NÃO é barrado de propósito (ver consumeForServiceItem): ali o consumo já
-  // aconteceu na cadeira, e barrar impediria de lançar um atendimento já feito.
-  if (kind === 'product' && ref && ref.stock < q) {
-    throw erro400(`Estoque insuficiente de ${ref.name}: restam ${ref.stock}.`)
+  // Vender sem estoque é PERMITIDO, mas nunca em silêncio: sem o sinal explícito de
+  // confirmação, devolve 409 pedindo que o balcão decida. Travar a venda sairia mais
+  // caro que o saldo negativo — inventário desatualizado é rotina, e o produto está
+  // ali na prateleira. O negativo vira pendência de ajuste, e o mesmo já vale para o
+  // insumo consumido por serviço (ver consumeForServiceItem), que também não barra.
+  if (kind === 'product' && ref && ref.stock < q && !confirmarSemEstoque) {
+    throw erroConfirma(
+      `Estoque de ${ref.name} insuficiente: ${ref.stock < 0 ? 'já está negativo em ' + ref.stock : 'restam ' + ref.stock}.`,
+      { needsConfirm: true, disponivel: ref.stock, produto: ref.name, pedido: q }
+    )
   }
 
   const total = unit * q
