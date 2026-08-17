@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getDb } from '../db.js'
+import { requireAdmin } from '../auth.js'
 import { wrap, asInt, num } from './_helpers.js'
 
 const r = Router()
@@ -60,7 +61,8 @@ r.get('/clients/:id', wrap((req, res) => {
 }))
 
 // Ajuste manual (crédito ou débito de pontos), com motivo.
-r.post('/adjust', wrap((req, res) => {
+// Ajuste manual de pontos vira dinheiro em resgate: só administração.
+r.post('/adjust', requireAdmin, wrap((req, res) => {
   const db = getDb()
   const { clientId, type, points, reason } = req.body || {}
   const client = clientId ? db.prepare('SELECT * FROM clients WHERE id = ?').get(asInt(clientId)) : null

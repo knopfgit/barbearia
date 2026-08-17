@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getDb } from '../db.js'
+import { requireAdmin } from '../auth.js'
 import { wrap, asInt } from './_helpers.js'
 
 const r = Router()
@@ -89,7 +90,9 @@ r.put('/:id', wrap((req, res) => {
   res.json(db.prepare('SELECT * FROM clients WHERE id = ?').get(id))
 }))
 
-r.delete('/:id', wrap((req, res) => {
+// Excluir cliente leva junto, em cascata, os pontos de fidelidade e a fila dele —
+// e some com histórico. Cadastrar e editar seguem liberados; apagar é da administração.
+r.delete('/:id', requireAdmin, wrap((req, res) => {
   getDb().prepare('DELETE FROM clients WHERE id = ?').run(asInt(req.params.id))
   res.json({ ok: true })
 }))

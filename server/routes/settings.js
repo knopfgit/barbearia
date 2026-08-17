@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getDb } from '../db.js'
+import { requireAdmin } from '../auth.js'
 import { wrap, hmToMin } from './_helpers.js'
 
 const r = Router()
@@ -22,7 +23,9 @@ const HM_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/
 // Expediente alimenta o cálculo de horários livres da Agenda (server/routes/appointments.js) —
 // valor absurdo aqui (fechamento antes da abertura, slot <= 0) derrubava a agenda inteira
 // (ou pior, travava o servidor num loop). Validado aqui pra pegar o erro na origem.
-r.put('/', wrap((req, res) => {
+// Leitura é livre (a tela usa o nome da barbearia, o expediente etc.); ESCREVER é
+// da administração — mexe em expediente, que rege a agenda, e nas regras de fidelidade.
+r.put('/', requireAdmin, wrap((req, res) => {
   const db = getDb()
   const body = req.body || {}
   if (body.openTime != null && body.openTime !== '' && !HM_RE.test(body.openTime)) {

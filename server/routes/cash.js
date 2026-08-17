@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getDb } from '../db.js'
+import { requireAdmin } from '../auth.js'
 import { wrap, toCents, asInt } from './_helpers.js'
 
 const r = Router()
@@ -63,7 +64,9 @@ r.post('/movement', wrap((req, res) => {
   res.status(201).json({ ok: true })
 }))
 
-r.post('/close', wrap((req, res) => {
+// Fechar o caixa é conferência de dinheiro e grava a diferença no histórico:
+// abrir e lançar movimento seguem liberados pro balcão, fechar é da administração.
+r.post('/close', requireAdmin, wrap((req, res) => {
   const db = getDb()
   const session = currentSession(db)
   if (!session) return res.status(400).json({ error: 'Nenhum caixa aberto.' })
