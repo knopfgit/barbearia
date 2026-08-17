@@ -42,6 +42,31 @@ export function destroySession(token) {
   getDb().prepare('DELETE FROM sessions WHERE token = ?').run(token)
 }
 
+// Senha padrão de primeiro acesso. Fica aqui pra poder ser recusada na troca e
+// avisada no boot: ela é pública (README e CLAUDE.md), então serve só pra entrar
+// na primeira vez e trocar.
+export const SENHA_PADRAO = 'admin123'
+
+export function conferePassword(userId, senha) {
+  const user = getDb().prepare('SELECT passwordHash FROM users WHERE id = ?').get(userId)
+  return !!user && bcrypt.compareSync(String(senha), user.passwordHash)
+}
+
+export function usaSenhaPadrao(userId) {
+  return conferePassword(userId, SENHA_PADRAO)
+}
+
+/**
+ * Grava a nova senha e derruba as OUTRAS sessões do usuário — se a senha vazou,
+ * trocá-la tem que expulsar quem entrou com ela. A sessão de quem está trocando
+ * (tokenAtual) continua valendo, senão a pessoa cairia da própria tela.
+ */
+export function trocaPassword(userId, novaSenha, tokenAtual) {
+  const db = getDb()
+  db.prepare('UPDATE users SET passwordHash = ? WHERE id = ?').run(hashPassword(novaSenha), userId)
+  db.prepare('DELETE FROM sessions WHERE userId = ? AND token != ?').run(userId, tokenAtual || '')
+}
+
 export function publicUser(u) {
   return { id: u.id, name: u.name, email: u.email, role: u.role }
 }

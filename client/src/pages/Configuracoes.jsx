@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { useAuth } from '../auth.jsx'
 import { useToast } from '../toast.jsx'
 import { Spinner, Field } from '../components.jsx'
 
@@ -67,6 +68,7 @@ export default function Configuracoes() {
             <button className="btn btn--primary" onClick={save} disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>
           </div>
         </div>
+        <TrocarSenha />
         <div className="card" style={{ alignSelf: 'start' }}>
           <div className="card__head"><h2>Sobre este sistema</h2></div>
           <div className="card__body">
@@ -79,5 +81,54 @@ export default function Configuracoes() {
         </div>
       </div>
     </>
+  )
+}
+
+// Troca da senha da conta que está logada. Enquanto a senha for a de primeiro
+// acesso (pública), o cartão avisa em vermelho — é o único jeito de sair dela.
+function TrocarSenha() {
+  const { senhaPadrao, revalidar } = useAuth()
+  const [senhaAtual, setSenhaAtual] = useState('')
+  const [novaSenha, setNovaSenha] = useState('')
+  const [repetir, setRepetir] = useState('')
+  const [busy, setBusy] = useState(false)
+  const toast = useToast()
+
+  async function trocar() {
+    if (novaSenha !== repetir) return toast.erro('A confirmação não bate com a nova senha.')
+    setBusy(true)
+    try {
+      await api('/auth/password', { method: 'POST', body: { senhaAtual, novaSenha } })
+      setSenhaAtual(''); setNovaSenha(''); setRepetir('')
+      toast.ok('Senha alterada. Quem estava logado com a senha antiga foi desconectado.')
+      revalidar()
+    } catch (e) { toast.erro(e.message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="card" style={{ alignSelf: 'start' }}>
+      <div className="card__head"><h2>Senha de acesso</h2></div>
+      <div className="card__body">
+        {senhaPadrao && (
+          <p style={{ marginTop: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--oxblood-text)' }}>
+            ⚠ Esta conta ainda usa a senha de primeiro acesso, que é pública.
+            Troque antes de deixar o sistema acessível a outras pessoas.
+          </p>
+        )}
+        <Field label="Senha atual">
+          <input className="input" type="password" autoComplete="current-password" value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} />
+        </Field>
+        <Field label="Nova senha (mínimo 8 caracteres)">
+          <input className="input" type="password" autoComplete="new-password" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} />
+        </Field>
+        <Field label="Repita a nova senha">
+          <input className="input" type="password" autoComplete="new-password" value={repetir} onChange={(e) => setRepetir(e.target.value)} />
+        </Field>
+        <button className="btn btn--primary" onClick={trocar} disabled={busy || !senhaAtual || !novaSenha}>
+          {busy ? 'Trocando…' : 'Trocar senha'}
+        </button>
+      </div>
+    </div>
   )
 }

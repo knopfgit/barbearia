@@ -4,8 +4,11 @@ import { Field, Logo } from '../components.jsx'
 
 export default function Login() {
   const { signIn } = useAuth()
-  const [email, setEmail] = useState('admin@barbearia.local')
-  const [password, setPassword] = useState('admin123')
+  // Campos vazios de propósito: já vieram preenchidos com a conta e a senha de
+  // primeiro acesso, e isso ia parar no bundle publicado — quem abrisse a tela
+  // entrava como administrador só apertando Enter.
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [err, setErr] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -31,9 +34,6 @@ export default function Login() {
         </Field>
         {err && <div className="toast toast--erro" style={{ marginBottom: 12, maxWidth: 'none' }}>{err}</div>}
         <button className="btn btn--primary btn--block" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
-        <p className="faint" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 16, marginBottom: 0 }}>
-          Acesso de demonstração já preenchido
-        </p>
       </form>
     </div>
   )
