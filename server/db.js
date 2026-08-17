@@ -31,6 +31,36 @@ export function getDb() {
   return db
 }
 
+// Profundidade de transação por conexão. SQLite não aninha BEGIN, e há operação que
+// chama outra já transacional (a fila chama createTicket) — a de dentro participa da
+// transação de fora em vez de abrir a própria.
+const profundidade = new WeakMap()
+
+/**
+ * Roda os passos numa transação: ou tudo grava, ou nada grava. Qualquer exceção
+ * desfaz o que já tinha sido escrito e sobe para o tratador central responder em pt.
+ *
+ * BEGIN IMMEDIATE (e não BEGIN puro) porque, com WAL ligado, o BEGIN diferido só
+ * pega o lock de escrita no primeiro INSERT/UPDATE — se outra instância do sistema
+ * escreveu nesse intervalo, a falha viria NO MEIO da operação, justamente o que se
+ * quer evitar. IMMEDIATE pega o lock na abertura e o busy_timeout vale para a espera.
+ */
+export function runInTransaction(db, fn) {
+  if ((profundidade.get(db) || 0) > 0) return fn()   // já dentro de uma transação
+  db.exec('BEGIN IMMEDIATE')
+  profundidade.set(db, 1)
+  try {
+    const resultado = fn()
+    db.exec('COMMIT')
+    return resultado
+  } catch (e) {
+    try { db.exec('ROLLBACK') } catch { /* já desfeita pelo próprio SQLite */ }
+    throw e
+  } finally {
+    profundidade.set(db, 0)
+  }
+}
+
 /**
  * Runner de migrations versionadas. Roda o que ainda falta, na ordem do array,
  * cada uma na sua transação. Mesmo padrão do sistema original: se uma falhar,

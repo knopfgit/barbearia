@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getDb } from '../db.js'
+import { getDb, runInTransaction } from '../db.js'
 import { wrap, asInt, toCents, num } from './_helpers.js'
 import { creditLoyaltyForTicket } from './loyalty.js'
 
@@ -237,14 +237,20 @@ r.post('/:id/checkout', wrap((req, res) => {
   if (!paymentMethod) return res.status(400).json({ error: 'Escolha a forma de pagamento.' })
   const session = db.prepare("SELECT * FROM cash_sessions WHERE status='open' ORDER BY id DESC LIMIT 1").get()
   if (!session) return res.status(400).json({ error: 'Abra o caixa antes de fechar comandas.' })
-  recompute(db, id)
-  const fresh = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id)
-  db.prepare("UPDATE tickets SET status='closed', paymentMethod=?, cashSessionId=?, closedAt=datetime('now') WHERE id=?")
-    .run(String(paymentMethod), session.id, id)
-  db.prepare('INSERT INTO cash_movements (sessionId, type, amount, method, description, ticketId, userId) VALUES (?,?,?,?,?,?,?)')
-    .run(session.id, 'sale', fresh.total, String(paymentMethod), `Comanda #${id}`, id, req.user?.id || null)
-  creditLoyaltyForTicket(db, fresh)
-  res.json(loadTicket(db, id))
+  // Fechar comanda mexe em tickets, cash_movements e loyalty_movements. Falhar no meio
+  // deixava venda fechada sem lançamento no caixa (ou sem os pontos do cliente), e o
+  // balcão não tinha como consertar: repetir dava "Comanda não está aberta".
+  const fechada = runInTransaction(db, () => {
+    recompute(db, id)
+    const fresh = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id)
+    db.prepare("UPDATE tickets SET status='closed', paymentMethod=?, cashSessionId=?, closedAt=datetime('now') WHERE id=?")
+      .run(String(paymentMethod), session.id, id)
+    db.prepare('INSERT INTO cash_movements (sessionId, type, amount, method, description, ticketId, userId) VALUES (?,?,?,?,?,?,?)')
+      .run(session.id, 'sale', fresh.total, String(paymentMethod), `Comanda #${id}`, id, req.user?.id || null)
+    creditLoyaltyForTicket(db, fresh)
+    return loadTicket(db, id)
+  })
+  res.json(fechada)
 }))
 
 r.post('/:id/cancel', wrap((req, res) => {
@@ -252,12 +258,16 @@ r.post('/:id/cancel', wrap((req, res) => {
   const id = asInt(req.params.id)
   const t = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id)
   if (!t || t.status !== 'open') return res.status(400).json({ error: 'Comanda não está aberta.' })
-  // devolve estoque dos produtos e dos insumos consumidos por serviços
-  for (const it of db.prepare("SELECT * FROM ticket_items WHERE ticketId=?").all(id)) {
-    if (it.kind === 'product' && it.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(it.qty, it.refId)
-    if (it.kind === 'service') reverseConsumablesForItem(db, it.id)
-  }
-  db.prepare("UPDATE tickets SET status='canceled' WHERE id=?").run(id)
+  // A devolução ao estoque é item a item: sem transação, uma falha no meio devolvia
+  // parte dos itens e deixava a comanda aberta, sem como saber o que já voltou.
+  runInTransaction(db, () => {
+    // devolve estoque dos produtos e dos insumos consumidos por serviços
+    for (const it of db.prepare("SELECT * FROM ticket_items WHERE ticketId=?").all(id)) {
+      if (it.kind === 'product' && it.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(it.qty, it.refId)
+      if (it.kind === 'service') reverseConsumablesForItem(db, it.id)
+    }
+    db.prepare("UPDATE tickets SET status='canceled' WHERE id=?").run(id)
+  })
   res.json({ ok: true })
 }))
 
