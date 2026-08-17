@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getDb } from '../db.js'
+import { getDb, runInTransaction } from '../db.js'
 import { wrap, asInt, BR_OFFSET_SQL } from './_helpers.js'
 import { createTicket, loadTicket } from './tickets.js'
 
@@ -64,16 +64,22 @@ r.post('/', wrap((req, res) => {
 // Tira o item da fila e abre a comanda dele com o profissional que liberou.
 // Reusa createTicket() — a criação de comanda mora só em routes/tickets.js.
 function atender(db, item, barberId) {
-  const ticketId = createTicket(db, {
-    clientId: item.clientId,
-    barberId,
-    serviceId: item.serviceId,
-    // Avulso não tem cadastro: o nome vai na comanda para o balcão saber quem é.
-    notes: item.clientId ? null : `Fila: ${item.guestName}`,
+  // Transação ÚNICA por fora: o createTicket também é transacional e, chamado aqui
+  // dentro, participa desta em vez de abrir outra (SQLite não aninha BEGIN). Assim,
+  // se o UPDATE da fila falhar, a comanda criada some junto — senão sobraria comanda
+  // aberta com a pessoa ainda marcada como aguardando, e ela seria chamada de novo.
+  return runInTransaction(db, () => {
+    const ticketId = createTicket(db, {
+      clientId: item.clientId,
+      barberId,
+      serviceId: item.serviceId,
+      // Avulso não tem cadastro: o nome vai na comanda para o balcão saber quem é.
+      notes: item.clientId ? null : `Fila: ${item.guestName}`,
+    })
+    db.prepare("UPDATE queue SET status='em_atendimento', calledAt=datetime('now'), ticketId=? WHERE id=?")
+      .run(ticketId, item.id)
+    return loadTicket(db, ticketId)
   })
-  db.prepare("UPDATE queue SET status='em_atendimento', calledAt=datetime('now'), ticketId=? WHERE id=?")
-    .run(ticketId, item.id)
-  return loadTicket(db, ticketId)
 }
 
 function validarBarbeiro(db, barberId) {

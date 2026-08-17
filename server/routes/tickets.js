@@ -91,26 +91,31 @@ r.get('/:id', wrap((req, res) => {
  * (e ele é marcado como atendido); senão, um `serviceId` avulso já entra como item.
  */
 export function createTicket(db, { clientId, barberId, appointmentId, serviceId, notes } = {}) {
-  const info = db.prepare('INSERT INTO tickets (clientId, barberId, appointmentId, notes) VALUES (?,?,?,?)')
-    .run(clientId ? asInt(clientId) : null, barberId ? asInt(barberId) : null,
-      appointmentId ? asInt(appointmentId) : null, notes || null)
-  const id = info.lastInsertRowid
+  // Abre a comanda, marca o agendamento como atendido e já lança o serviço (que baixa
+  // insumo): quatro tabelas. Se chamada de dentro de outra transação — é o caso da
+  // fila, em routes/queue.js — participa daquela em vez de abrir a própria.
+  return runInTransaction(db, () => {
+    const info = db.prepare('INSERT INTO tickets (clientId, barberId, appointmentId, notes) VALUES (?,?,?,?)')
+      .run(clientId ? asInt(clientId) : null, barberId ? asInt(barberId) : null,
+        appointmentId ? asInt(appointmentId) : null, notes || null)
+    const id = info.lastInsertRowid
 
-  let itemServiceId = serviceId ? asInt(serviceId) : null
-  let itemBarberId = barberId ? asInt(barberId) : null
-  if (appointmentId) {
-    const ap = db.prepare('SELECT * FROM appointments WHERE id = ?').get(asInt(appointmentId))
-    if (ap) { itemServiceId = ap.serviceId; itemBarberId = ap.barberId }
-    db.prepare("UPDATE appointments SET status='done' WHERE id=?").run(asInt(appointmentId))
-  }
-  if (itemServiceId) {
-    const svc = db.prepare('SELECT * FROM services WHERE id = ?').get(itemServiceId)
-    // Não passar unitPrice aqui: svc.price já está em centavos, e addItem() chama toCents()
-    // (que espera reais) quando unitPrice vem preenchido — passar de novo multiplicaria por 100.
-    if (svc) addItem(db, id, { kind: 'service', refId: svc.id, description: svc.name, barberId: itemBarberId, qty: 1 })
-  }
-  recompute(db, id)
-  return id
+    let itemServiceId = serviceId ? asInt(serviceId) : null
+    let itemBarberId = barberId ? asInt(barberId) : null
+    if (appointmentId) {
+      const ap = db.prepare('SELECT * FROM appointments WHERE id = ?').get(asInt(appointmentId))
+      if (ap) { itemServiceId = ap.serviceId; itemBarberId = ap.barberId }
+      db.prepare("UPDATE appointments SET status='done' WHERE id=?").run(asInt(appointmentId))
+    }
+    if (itemServiceId) {
+      const svc = db.prepare('SELECT * FROM services WHERE id = ?').get(itemServiceId)
+      // Não passar unitPrice aqui: svc.price já está em centavos, e addItem() chama toCents()
+      // (que espera reais) quando unitPrice vem preenchido — passar de novo multiplicaria por 100.
+      if (svc) addItem(db, id, { kind: 'service', refId: svc.id, description: svc.name, barberId: itemBarberId, qty: 1 })
+    }
+    recompute(db, id)
+    return id
+  })
 }
 
 // Abre uma comanda (walk-in ou a partir de um agendamento).
@@ -182,9 +187,14 @@ r.post('/:id/items', wrap((req, res) => {
   const id = asInt(req.params.id)
   const t = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id)
   if (!t || t.status !== 'open') return res.status(400).json({ error: 'Comanda não está aberta.' })
-  addItem(db, id, req.body || {})
-  recompute(db, id)
-  res.status(201).json(loadTicket(db, id))
+  // Lançar item grava o item, baixa estoque (produto) ou insumo (serviço, com snapshot
+  // do consumo) e recalcula o total — quatro tabelas.
+  const comItem = runInTransaction(db, () => {
+    addItem(db, id, req.body || {})
+    recompute(db, id)
+    return loadTicket(db, id)
+  })
+  res.status(201).json(comItem)
 }))
 
 // Era o único handler de comanda sem esta guarda. Sem ela, remover item de comanda
@@ -197,11 +207,16 @@ r.delete('/:id/items/:itemId', wrap((req, res) => {
   if (!t || t.status !== 'open') return res.status(400).json({ error: 'Comanda não está aberta.' })
   const item = db.prepare('SELECT * FROM ticket_items WHERE id = ? AND ticketId = ?').get(asInt(req.params.itemId), id)
   if (!item) return res.status(404).json({ error: 'Item não encontrado.' })
-  if (item.kind === 'product' && item.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(item.qty, item.refId)
-  if (item.kind === 'service') reverseConsumablesForItem(db, item.id)
-  db.prepare('DELETE FROM ticket_items WHERE id = ?').run(item.id)
-  recompute(db, id)
-  res.json(loadTicket(db, id))
+  // Devolver ao estoque e apagar o item são passos separados: sem transação, uma falha
+  // no meio devolvia o estoque de um item que continuava na comanda.
+  const semItem = runInTransaction(db, () => {
+    if (item.kind === 'product' && item.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(item.qty, item.refId)
+    if (item.kind === 'service') reverseConsumablesForItem(db, item.id)
+    db.prepare('DELETE FROM ticket_items WHERE id = ?').run(item.id)
+    recompute(db, id)
+    return loadTicket(db, id)
+  })
+  res.json(semItem)
 }))
 
 // Ajusta desconto / cliente / barbeiro principal da comanda.
@@ -218,13 +233,18 @@ r.put('/:id', wrap((req, res) => {
   if (discount != null && toCents(discount) > t.subtotal) {
     return res.status(400).json({ error: `O desconto não pode ser maior que o valor da comanda (${(t.subtotal / 100).toFixed(2).replace('.', ',')}).` })
   }
-  db.prepare('UPDATE tickets SET discount=?, clientId=?, barberId=?, notes=? WHERE id=?')
-    .run(discount != null ? toCents(discount) : t.discount,
-      clientId !== undefined ? (clientId ? asInt(clientId) : null) : t.clientId,
-      barberId !== undefined ? (barberId ? asInt(barberId) : null) : t.barberId,
-      notes !== undefined ? notes : t.notes, id)
-  recompute(db, id)
-  res.json(loadTicket(db, id))
+  // Duas escritas em sequência (o UPDATE e o recálculo do total): juntas, para não
+  // existir instante em que o desconto está gravado e o total ainda é o antigo.
+  const atualizada = runInTransaction(db, () => {
+    db.prepare('UPDATE tickets SET discount=?, clientId=?, barberId=?, notes=? WHERE id=?')
+      .run(discount != null ? toCents(discount) : t.discount,
+        clientId !== undefined ? (clientId ? asInt(clientId) : null) : t.clientId,
+        barberId !== undefined ? (barberId ? asInt(barberId) : null) : t.barberId,
+        notes !== undefined ? notes : t.notes, id)
+    recompute(db, id)
+    return loadTicket(db, id)
+  })
+  res.json(atualizada)
 }))
 
 // Fecha a comanda: registra pagamento e lança no caixa aberto.
