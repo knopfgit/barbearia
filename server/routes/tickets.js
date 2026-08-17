@@ -27,9 +27,14 @@ function reverseConsumablesForItem(db, ticketItemId) {
   }
 }
 
+// Quem veio da fila sem cadastro só existe pelo nome, guardado em queue.guestName.
+// Sem trazer esse nome, toda comanda de avulso aparece como "Avulso" e o balcão não
+// sabe de quem é qual — com três cadeiras rodando, cobra-se o corte errado.
+const GUEST_NAME = '(SELECT q.guestName FROM queue q WHERE q.ticketId = t.id) AS guestName'
+
 export function loadTicket(db, id) {
   const t = db.prepare(
-    `SELECT t.*, c.name AS clientName, b.name AS barberName
+    `SELECT t.*, c.name AS clientName, b.name AS barberName, ${GUEST_NAME}
      FROM tickets t LEFT JOIN clients c ON c.id = t.clientId
      LEFT JOIN barbers b ON b.id = t.barberId WHERE t.id = ?`
   ).get(id)
@@ -64,7 +69,7 @@ function commissionPctFor(db, kind, ref, barberId) {
 r.get('/', wrap((req, res) => {
   const status = req.query.status || 'open'
   const rows = getDb().prepare(
-    `SELECT t.*, c.name AS clientName, b.name AS barberName FROM tickets t
+    `SELECT t.*, c.name AS clientName, b.name AS barberName, ${GUEST_NAME} FROM tickets t
      LEFT JOIN clients c ON c.id=t.clientId LEFT JOIN barbers b ON b.id=t.barberId
      WHERE t.status = ? ORDER BY t.openedAt DESC`
   ).all(String(status))

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
-import { brl, hm, PAYMENT_LABELS, parseMoney } from '../util.js'
+import { brl, hm, utcDate, PAYMENT_LABELS, parseMoney } from '../util.js'
 import { Spinner, Empty, Field } from '../components.jsx'
 
 export default function Comanda() {
@@ -40,8 +40,8 @@ export default function Comanda() {
                 <div className="slot__time" style={{ fontSize: 15, width: 44 }}>#{t.id}</div>
                 <div className="slot__bar" style={{ background: 'var(--accent)' }} />
                 <div className="slot__main">
-                  <div className="slot__client">{t.clientName || 'Avulso'}</div>
-                  <div className="slot__meta">{t.barberName || 'Sem profissional'} · aberta {hm(t.openedAt)}</div>
+                  <div className="slot__client">{t.clientName || t.guestName || 'Avulso'}</div>
+                  <div className="slot__meta">{t.barberName || 'Sem profissional'} · aberta {hm(utcDate(t.openedAt))}</div>
                 </div>
                 <span className="money" style={{ color: 'var(--accent-text)' }}>{brl(t.total)}</span>
               </button>
@@ -150,8 +150,8 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">Comanda #{t.id} · aberta {hm(t.openedAt)}</div>
-          <h1>{t.clientName || 'Cliente avulso'}</h1>
+          <div className="eyebrow">Comanda #{t.id} · aberta {hm(utcDate(t.openedAt))}</div>
+          <h1>{t.clientName || t.guestName || 'Cliente avulso'}</h1>
           <p>Adicione serviços e produtos e finalize o pagamento.</p>
         </div>
         <button className="btn" onClick={onBack}>← Voltar</button>
