@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
-import { brl, linkWhatsApp, MSG_WHATSAPP } from '../util.js'
+import { brl, utcDate, linkWhatsApp, MSG_WHATSAPP } from '../util.js'
 import { Spinner, Empty, Modal, Field } from '../components.jsx'
 
 export default function Clientes() {
@@ -105,7 +105,7 @@ function ClientModal({ client, onClose, onSaved }) {
           <div className="eyebrow" style={{ margin: '8px 0' }}>Últimos atendimentos</div>
           {history.map((h) => (
             <div className="spread" key={h.id} style={{ padding: '6px 0', borderBottom: '1px solid var(--line-soft)', fontSize: 13 }}>
-              <span className="muted">{h.closedAt?.slice(0, 10)} · {h.barber || '—'}</span>
+              <span className="muted">{utcDate(h.closedAt)?.toLocaleDateString('pt-BR') || '—'} · {h.barber || '—'}</span>
               <span className="money">{brl(h.total)}</span>
             </div>
           ))}

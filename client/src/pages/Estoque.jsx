@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
-import { brl, hm, today } from '../util.js'
+import { brl, hm, utcDate, today } from '../util.js'
 import { Spinner, Empty, Field, Modal } from '../components.jsx'
 
 function monthStart() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10) }
@@ -104,7 +104,7 @@ export default function Estoque() {
               <tbody>
                 {movements.map((m) => (
                   <tr key={m.id}>
-                    <td className="mono">{hm(m.createdAt)}</td>
+                    <td className="mono">{hm(utcDate(m.createdAt))}</td>
                     <td>{m.productName}</td>
                     <td>{{ entrada: 'Entrada', saida: 'Saída', ajuste: 'Ajuste' }[m.type] || m.type}</td>
                     <td className="num" style={{ color: m.qty < 0 ? 'var(--oxblood)' : 'var(--green)' }}>{m.qty > 0 ? '+' : ''}{m.qty}</td>

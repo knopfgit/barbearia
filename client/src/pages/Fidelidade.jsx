@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
-import { hm } from '../util.js'
+import { hm, utcDate } from '../util.js'
 import { Spinner, Empty, Field, Modal } from '../components.jsx'
 
 const TIER_LABELS = { bronze: 'Bronze', prata: 'Prata', ouro: 'Ouro' }
@@ -95,7 +95,7 @@ function HistoryModal({ client, onClose }) {
           <tbody>
             {d.movements.map((m) => (
               <tr key={m.id}>
-                <td className="mono">{hm(m.createdAt)}</td>
+                <td className="mono">{hm(utcDate(m.createdAt))}</td>
                 <td>{m.type === 'credito' ? 'Crédito' : 'Débito'}</td>
                 <td className="muted">{m.reason || '—'}</td>
                 <td className="num" style={{ color: m.type === 'debito' ? 'var(--oxblood)' : 'var(--green)' }}>{m.type === 'debito' ? '−' : '+'}{m.points}</td>

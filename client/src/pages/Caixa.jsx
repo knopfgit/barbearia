@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
-import { brl, hm, PAYMENT_LABELS, parseMoney } from '../util.js'
+import { brl, hm, utcDate, PAYMENT_LABELS, parseMoney } from '../util.js'
 import { Spinner, Empty, Field, Modal } from '../components.jsx'
 
 export default function Caixa() {
@@ -28,7 +28,7 @@ export default function Caixa() {
       ) : (
         <>
           <div className="kpis" style={{ marginBottom: 20 }}>
-            <div className="kpi"><div className="kpi__label">Vendas na sessão</div><div className="kpi__value money">{brl(state.summary.salesTotal)}</div><div className="kpi__foot">aberto às {hm(state.session.openedAt)}</div></div>
+            <div className="kpi"><div className="kpi__label">Vendas na sessão</div><div className="kpi__value money">{brl(state.summary.salesTotal)}</div><div className="kpi__foot">aberto às {hm(utcDate(state.session.openedAt))}</div></div>
             <div className="kpi"><div className="kpi__label">Troco inicial</div><div className="kpi__value money">{brl(state.session.openingFloat)}</div><div className="kpi__foot">fundo de caixa</div></div>
             <div className="kpi"><div className="kpi__label">Esperado em dinheiro</div><div className="kpi__value money">{brl(state.expectedCash)}</div><div className="kpi__foot">gaveta ao fechar</div></div>
           </div>
@@ -59,7 +59,7 @@ export default function Caixa() {
                     <tbody>
                       {state.movements.map((m) => (
                         <tr key={m.id}>
-                          <td className="mono">{hm(m.createdAt)}</td>
+                          <td className="mono">{hm(utcDate(m.createdAt))}</td>
                           <td>{m.type === 'sale' ? 'Venda' : m.type === 'in' ? 'Reforço' : 'Sangria'}{m.method && m.type === 'sale' ? ` · ${PAYMENT_LABELS[m.method] || m.method}` : ''}</td>
                           <td className="muted">{m.description}</td>
                           <td className="num" style={{ color: m.type === 'out' ? 'var(--oxblood)' : 'var(--cream)' }}>{m.type === 'out' ? '−' : ''}{brl(m.amount)}</td>
