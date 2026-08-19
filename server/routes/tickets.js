@@ -43,6 +43,20 @@ export function loadTicket(db, id) {
     `SELECT i.*, b.name AS barberName FROM ticket_items i
      LEFT JOIN barbers b ON b.id = i.barberId WHERE i.ticketId = ? ORDER BY i.id`
   ).all(id)
+  // Prévia da comissão (a tela da comanda mostra ela, não o valor gravado): enquanto
+  // a comanda está aberta o desconto ainda pode mudar, então o commissionValue do
+  // item só vira definitivo no checkout. Comanda fechada/cancelada não recalcula —
+  // o que está gravado é o que foi pago.
+  t.commissionOnDiscount = politicaComissao(db)
+  if (t.status === 'open') {
+    const efetivas = comissoesEfetivas(db, t.items, t.discount)
+    t.items.forEach((i, k) => {
+      i.descontoRateado = efetivas[k].descontoRateado
+      i.commissionPreview = efetivas[k].commissionValue
+    })
+  } else {
+    for (const i of t.items) { i.descontoRateado = 0; i.commissionPreview = i.commissionValue }
+  }
   return t
 }
 
@@ -64,6 +78,51 @@ function commissionPctFor(db, kind, ref, barberId) {
     return barber ? barber.commissionPct : 0
   }
   return ref ? (ref.commissionPct || 0) : 0
+}
+
+// Política de comissão quando a comanda tem desconto (settings.commissionOnDiscount):
+//   'cheio'   → comissão sobre o valor cheio do item (padrão; comportamento antigo)
+//   'liquido' → o desconto da comanda é rateado entre os itens e a comissão sai do
+//               valor já com desconto — quem dá o desconto divide o custo dele.
+export function politicaComissao(db) {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'commissionOnDiscount'").get()
+  return row && row.value === 'liquido' ? 'liquido' : 'cheio'
+}
+
+/**
+ * Rateia `desconto` (centavos) entre os itens, proporcional ao total de cada um,
+ * pelo método do MAIOR RESTO: cada item leva a parte inteira e as sobras vão para
+ * quem tem a maior fração. A soma das cotas é EXATAMENTE o desconto — sem centavo
+ * perdido nem criado, que é o que faria a comissão não bater com o relatório.
+ * Entra na conta todo item da comanda (produto e item sem profissional inclusive):
+ * o desconto foi dado sobre a comanda inteira.
+ */
+export function rateiaDesconto(totais, desconto) {
+  const soma = totais.reduce((s, v) => s + v, 0)
+  const alvo = Math.min(Math.max(0, desconto || 0), Math.max(0, soma))
+  if (alvo <= 0 || soma <= 0) return totais.map(() => 0)
+  const exatos = totais.map((v) => (v * alvo) / soma)
+  const cotas = exatos.map((v) => Math.floor(v))
+  let sobra = alvo - cotas.reduce((s, v) => s + v, 0)
+  // Desempate fixo (maior fração → item mais caro → ordem de lançamento) para o
+  // mesmo desconto sempre render o mesmo rateio.
+  const ordem = exatos
+    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac || totais[b.i] - totais[a.i] || a.i - b.i)
+  for (let k = 0; k < ordem.length && sobra > 0; k++, sobra--) cotas[ordem[k].i]++
+  return cotas
+}
+
+// Comissão efetiva de cada item conforme a política vigente. Devolve, na ordem dos
+// itens recebidos, { descontoRateado, commissionValue }. No modo 'cheio' o rateio é
+// zero e o resultado é o mesmo que já está gravado no item.
+export function comissoesEfetivas(db, items, desconto) {
+  const totais = items.map((i) => i.total)
+  const cotas = politicaComissao(db) === 'liquido' ? rateiaDesconto(totais, desconto) : totais.map(() => 0)
+  return items.map((i, k) => ({
+    descontoRateado: cotas[k],
+    commissionValue: Math.round(((i.total - cotas[k]) * (i.commissionPct || 0)) / 100),
+  }))
 }
 
 r.get('/', wrap((req, res) => {
@@ -263,6 +322,15 @@ r.post('/:id/checkout', wrap((req, res) => {
   const fechada = runInTransaction(db, () => {
     recompute(db, id)
     const fresh = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id)
+    // Comissão definitiva conforme a política de desconto vigente, ainda dentro da
+    // transação e ANTES de fechar: depois disso a comanda não muda mais. No modo
+    // 'cheio' nada é reescrito — o valor já gravado no item é o mesmo.
+    const itens = db.prepare('SELECT * FROM ticket_items WHERE ticketId = ? ORDER BY id').all(id)
+    const efetivas = comissoesEfetivas(db, itens, fresh.discount)
+    const gravaComissao = db.prepare('UPDATE ticket_items SET commissionValue = ? WHERE id = ?')
+    itens.forEach((it, k) => {
+      if (efetivas[k].commissionValue !== it.commissionValue) gravaComissao.run(efetivas[k].commissionValue, it.id)
+    })
     db.prepare("UPDATE tickets SET status='closed', paymentMethod=?, cashSessionId=?, closedAt=datetime('now') WHERE id=?")
       .run(String(paymentMethod), session.id, id)
     db.prepare('INSERT INTO cash_movements (sessionId, type, amount, method, description, ticketId, userId) VALUES (?,?,?,?,?,?,?)')

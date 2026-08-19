@@ -8,6 +8,10 @@ const DEFAULTS = {
   shopName: 'Barbearia Mattos', address: '', phone: '', accent: '#d95a26',
   openTime: '09:00', closeTime: '19:00', slotMinutes: '30',
   loyaltyEnabled: '1', loyaltyPointsPerReal: '1', loyaltyTierPrata: '10', loyaltyTierOuro: '25',
+  // Comissão quando a comanda tem desconto: 'cheio' (sobre o valor cheio do item,
+  // comportamento histórico) ou 'liquido' (desconto rateado entre os itens antes da
+  // comissão). Ver server/routes/tickets.js.
+  commissionOnDiscount: 'cheio',
 }
 
 r.get('/', wrap((req, res) => {
@@ -49,6 +53,12 @@ r.put('/', requireAdmin, wrap((req, res) => {
     const p = Number(body.loyaltyTierPrata), o = Number(body.loyaltyTierOuro)
     if (!Number.isFinite(p) || p < 0 || !Number.isFinite(o) || o < 0) return res.status(400).json({ error: 'Visitas do nível precisa ser um número válido.' })
     if (o <= p) return res.status(400).json({ error: 'O nível ouro precisa exigir mais visitas que o prata.' })
+  }
+  // Valor fora da lista viraria 'cheio' na leitura (o fallback de politicaComissao),
+  // e a tela mostraria uma opção que não é a que está valendo.
+  if (body.commissionOnDiscount != null && body.commissionOnDiscount !== ''
+      && body.commissionOnDiscount !== 'cheio' && body.commissionOnDiscount !== 'liquido') {
+    return res.status(400).json({ error: 'Política de comissão inválida.' })
   }
   const stmt = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
   for (const [k, v] of Object.entries(body)) stmt.run(k, v == null ? '' : String(v))
