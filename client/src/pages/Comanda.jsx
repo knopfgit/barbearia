@@ -158,7 +158,13 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
 
   if (!t) return <Spinner />
   const catalog = tab === 'service' ? services : products
-  const commissionTotal = (t.items || []).reduce((s, i) => s + i.commissionValue, 0)
+  // A comissão mostrada é a PRÉVIA vinda do servidor (comissionPreview): com a
+  // política "sobre o valor com desconto", o desconto da comanda é rateado entre os
+  // itens e o valor gravado só vira definitivo no fechamento. Sem desconto — ou na
+  // política "sobre o valor cheio" — a prévia é igual ao valor gravado.
+  const comissaoDoItem = (i) => (i.commissionPreview ?? i.commissionValue)
+  const commissionTotal = (t.items || []).reduce((s, i) => s + comissaoDoItem(i), 0)
+  const comissaoLiquida = t.commissionOnDiscount === 'liquido' && t.discount > 0
   // Rastro da venda sem estoque: sai do saldo atual do produto, não de uma marca em
   // memória — assim continua visível depois de recarregar a página.
   const estoqueNegativo = (item) => item.kind === 'product' && item.refId
@@ -224,7 +230,12 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13.5 }}>{i.description}</div>
                   <div className="faint" style={{ fontSize: 11.5 }}>
-                    {i.barberName || '—'} · comissão {i.commissionPct}% = {brl(i.commissionValue)}
+                    {i.barberName || '—'} · comissão {i.commissionPct}% = {brl(comissaoDoItem(i))}
+                    {comissaoLiquida && i.descontoRateado > 0 && (
+                      <span title={`Desconto rateado neste item: ${brl(i.descontoRateado)}`}>
+                        {' '}(sobre {brl(i.total - i.descontoRateado)} com desconto)
+                      </span>
+                    )}
                     {estoqueNegativo(i) && (
                       <span style={{ color: 'var(--oxblood-text)' }}> · ⚠ estoque negativo</span>
                     )}
@@ -242,7 +253,10 @@ function ComandaEditor({ id, barbers, clients, onBack }) {
               <button className="btn btn--sm" onClick={applyDiscount}>Aplicar</button>
             </div>
             <div className="comanda__totline"><span>Total</span><span className="comanda__grand" style={{ color: 'var(--accent-text)' }}>{brl(t.total)}</span></div>
-            <div className="faint" style={{ fontSize: 11.5, textAlign: 'right', marginTop: 2 }}>comissão total {brl(commissionTotal)}</div>
+            <div className="faint" style={{ fontSize: 11.5, textAlign: 'right', marginTop: 2 }}>
+              comissão total {brl(commissionTotal)}
+              {comissaoLiquida && ' · prévia, com o desconto rateado'}
+            </div>
 
             <div className="eyebrow" style={{ margin: '16px 0 8px' }}>Pagamento</div>
             <div className="pay-grid">

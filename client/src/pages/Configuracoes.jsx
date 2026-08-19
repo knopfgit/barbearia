@@ -68,6 +68,39 @@ export default function Configuracoes() {
             <button className="btn btn--primary" onClick={save} disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>
           </div>
         </div>
+        <div className="card" style={{ alignSelf: 'start' }}>
+          <div className="card__head"><h2>Comissão</h2></div>
+          <div className="card__body">
+            <div className="eyebrow" style={{ marginBottom: 8 }}>Comissão quando há desconto</div>
+            <label className="row" style={{ gap: 8, cursor: 'pointer', alignItems: 'flex-start', flexWrap: 'nowrap', marginBottom: 10 }}>
+              <input type="radio" name="commissionOnDiscount" style={{ marginTop: 3 }}
+                checked={(f.commissionOnDiscount || 'cheio') !== 'liquido'}
+                onChange={() => setF({ ...f, commissionOnDiscount: 'cheio' })} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <strong>Sobre o valor cheio</strong>
+                <span className="muted" style={{ display: 'block', fontSize: 12.5, lineHeight: 1.5 }}>
+                  O profissional recebe a comissão do preço de tabela — o desconto sai todo da barbearia.
+                </span>
+              </span>
+            </label>
+            <label className="row" style={{ gap: 8, cursor: 'pointer', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
+              <input type="radio" name="commissionOnDiscount" style={{ marginTop: 3 }}
+                checked={f.commissionOnDiscount === 'liquido'}
+                onChange={() => setF({ ...f, commissionOnDiscount: 'liquido' })} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <strong>Sobre o valor com desconto</strong>
+                <span className="muted" style={{ display: 'block', fontSize: 12.5, lineHeight: 1.5 }}>
+                  O desconto da comanda é dividido entre os itens (proporcional ao valor de cada um) antes
+                  de calcular a comissão — profissional e barbearia dividem o desconto.
+                </span>
+              </span>
+            </label>
+            <p className="faint" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>
+              Vale para as comandas fechadas daqui em diante. Comandas já fechadas não mudam.
+            </p>
+            <button className="btn btn--primary" onClick={save} disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>
+          </div>
+        </div>
         <TrocarSenha />
         <div className="card" style={{ alignSelf: 'start' }}>
           <div className="card__head"><h2>Sobre este sistema</h2></div>
