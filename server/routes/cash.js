@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { getDb, runInTransaction } from '../db.js'
 import { requireAdmin } from '../auth.js'
-import { wrap, toCents, asInt } from './_helpers.js'
+import { wrap, toCents, asInt, BR_OFFSET_SQL } from './_helpers.js'
 
 const r = Router()
 
@@ -85,8 +85,39 @@ r.post('/close', requireAdmin, wrap((req, res) => {
   res.json(fechado)
 }))
 
-r.get('/history', wrap((req, res) => {
-  res.json(getDb().prepare("SELECT * FROM cash_sessions WHERE status='closed' ORDER BY id DESC LIMIT 60").all())
+// Consulta de fechamentos passados: é a conferência de dinheiro da casa, então fica
+// restrita à administração — mesma régua do /close.
+const HISTORY_SELECT = `SELECT c.*, uo.name AS openedByName, uc.name AS closedByName
+   FROM cash_sessions c
+   LEFT JOIN users uo ON uo.id = c.openedBy
+   LEFT JOIN users uc ON uc.id = c.closedBy`
+
+// ?from=YYYY-MM-DD&to=YYYY-MM-DD filtra pela data de FECHAMENTO (inclusive nas duas
+// pontas). Sem filtro, segue devolvendo os mais recentes, como antes.
+r.get('/history', requireAdmin, wrap((req, res) => {
+  const db = getDb()
+  const from = req.query.from ? String(req.query.from) : null
+  const to = req.query.to ? String(req.query.to) : null
+  if (!from && !to) {
+    return res.json(db.prepare(`${HISTORY_SELECT} WHERE c.status='closed' ORDER BY c.id DESC LIMIT 60`).all())
+  }
+  // closedAt é UTC (datetime('now')): sem o -3h de Brasília, um caixa fechado depois
+  // das 21h cairia no dia seguinte e sumiria do filtro do próprio dia. Mesmo corte
+  // usado no Financeiro e no Estoque.
+  res.json(db.prepare(
+    `${HISTORY_SELECT} WHERE c.status='closed' AND date(c.closedAt, '${BR_OFFSET_SQL}') BETWEEN ? AND ?
+     ORDER BY c.closedAt DESC, c.id DESC LIMIT 500`
+  ).all(from || '0000-01-01', to || '9999-12-31'))
+}))
+
+// Detalhe de um fechamento: as movimentações daquela sessão e o resumo por forma de
+// pagamento (a mesma soma que o /current mostra no caixa aberto).
+r.get('/history/:id', requireAdmin, wrap((req, res) => {
+  const db = getDb()
+  const session = db.prepare(`${HISTORY_SELECT} WHERE c.id = ?`).get(asInt(req.params.id))
+  if (!session) return res.status(404).json({ error: 'Fechamento de caixa não encontrado.' })
+  const movements = db.prepare('SELECT * FROM cash_movements WHERE sessionId = ? ORDER BY id DESC').all(session.id)
+  res.json({ session, summary: summary(db, session.id), movements })
 }))
 
 export default r
