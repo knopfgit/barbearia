@@ -292,4 +292,24 @@ export const migrations = [
       `)
     },
   },
+  {
+    id: '0007_ticket_refund',
+    up(d) {
+      d.exec(`
+        -- Estorno de comanda fechada: desfaz a venda (devolve estoque, tira o valor do
+        -- caixa, zera comissão e debita os pontos) e deixa a comanda como registro morto.
+        --
+        -- O status ganha o valor 'refunded' (open|closed|canceled|refunded). Não precisa
+        -- de mudança de schema pra isso — a coluna é TEXT sem CHECK — mas TODO relatório
+        -- filtra status='closed', então a comanda estornada sai sozinha de faturamento,
+        -- comissão, visitas, consumo de insumo e histórico do cliente.
+        --
+        -- As três colunas abaixo são a auditoria: estorno mexe em dinheiro, então quem
+        -- fez, quando e por quê precisam ficar gravados na própria comanda.
+        ALTER TABLE tickets ADD COLUMN refundedAt TEXT;
+        ALTER TABLE tickets ADD COLUMN refundedBy INTEGER REFERENCES users(id);
+        ALTER TABLE tickets ADD COLUMN refundReason TEXT;
+      `)
+    },
+  },
 ]

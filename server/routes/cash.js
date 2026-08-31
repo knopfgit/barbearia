@@ -10,19 +10,26 @@ function currentSession(db) {
 }
 
 // Soma dos movimentos da sessão, agrupada por forma de pagamento.
+//
+// O estorno de comanda ('refund') entra como venda NEGATIVA na própria forma de
+// pagamento, em vez de sangria: estornar uma venda no cartão não pode tirar dinheiro
+// da gaveta, que nunca recebeu esse valor. Como o esperado em dinheiro sai de
+// byMethod['dinheiro'] (ver expectedCash), a gaveta só muda quando a venda estornada
+// foi em dinheiro — que é o certo.
 function summary(db, sessionId) {
   const rows = db.prepare(
     `SELECT method, type, SUM(amount) AS total, COUNT(*) AS n
      FROM cash_movements WHERE sessionId = ? GROUP BY method, type`
   ).all(sessionId)
   const byMethod = {}
-  let salesTotal = 0, cashIn = 0, cashOut = 0
+  let salesTotal = 0, cashIn = 0, cashOut = 0, refundsTotal = 0
   for (const row of rows) {
     if (row.type === 'sale') { byMethod[row.method] = (byMethod[row.method] || 0) + row.total; salesTotal += row.total }
+    if (row.type === 'refund') { byMethod[row.method] = (byMethod[row.method] || 0) - row.total; salesTotal -= row.total; refundsTotal += row.total }
     if (row.type === 'in') cashIn += row.total
     if (row.type === 'out') cashOut += row.total
   }
-  return { byMethod, salesTotal, cashIn, cashOut }
+  return { byMethod, salesTotal, cashIn, cashOut, refundsTotal }
 }
 
 // Esperado em dinheiro = troco inicial + vendas em dinheiro + reforços - sangrias.

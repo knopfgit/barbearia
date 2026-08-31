@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getDb, runInTransaction } from '../db.js'
+import { requireAdmin } from '../auth.js'
 import { wrap, asInt, toCents, num } from './_helpers.js'
 import { creditLoyaltyForTicket } from './loyalty.js'
 
@@ -126,13 +127,23 @@ export function comissoesEfetivas(db, items, desconto) {
 }
 
 r.get('/', wrap((req, res) => {
+  const db = getDb()
+  const SELECT = `SELECT t.*, c.name AS clientName, b.name AS barberName, ${GUEST_NAME} FROM tickets t
+     LEFT JOIN clients c ON c.id=t.clientId LEFT JOIN barbers b ON b.id=t.barberId`
+  // ?session=atual: as comandas já cobradas no caixa que está aberto agora — que é
+  // exatamente o conjunto que pode ser estornado. Traz as estornadas junto pra elas
+  // não sumirem da tela no instante do estorno. Lista naturalmente curta (um turno),
+  // ao contrário de "todas as fechadas", que cresce pra sempre.
+  if (req.query.session === 'atual') {
+    const session = db.prepare("SELECT id FROM cash_sessions WHERE status='open' ORDER BY id DESC LIMIT 1").get()
+    if (!session) return res.json([])
+    return res.json(db.prepare(
+      `${SELECT} WHERE t.cashSessionId = ? AND t.status IN ('closed','refunded')
+       ORDER BY t.closedAt DESC, t.id DESC`
+    ).all(session.id))
+  }
   const status = req.query.status || 'open'
-  const rows = getDb().prepare(
-    `SELECT t.*, c.name AS clientName, b.name AS barberName, ${GUEST_NAME} FROM tickets t
-     LEFT JOIN clients c ON c.id=t.clientId LEFT JOIN barbers b ON b.id=t.barberId
-     WHERE t.status = ? ORDER BY t.openedAt DESC`
-  ).all(String(status))
-  res.json(rows)
+  res.json(db.prepare(`${SELECT} WHERE t.status = ? ORDER BY t.openedAt DESC`).all(String(status)))
 }))
 
 r.get('/:id', wrap((req, res) => {
@@ -357,6 +368,80 @@ r.post('/:id/cancel', wrap((req, res) => {
     db.prepare("UPDATE tickets SET status='canceled' WHERE id=?").run(id)
   })
   res.json({ ok: true })
+}))
+
+/**
+ * Desfaz uma venda já fechada: devolve estoque (produto e insumo), tira o valor do
+ * caixa, zera a comissão dos itens, debita os pontos creditados e marca a comanda
+ * como estornada, com autor, data e motivo.
+ *
+ * TODOS os passos numa transação só — meio estorno é pior que estorno nenhum: estoque
+ * de volta sem o dinheiro sair do caixa (ou o contrário) deixa a conferência da gaveta
+ * mentindo, sem ninguém saber o que já foi desfeito. Se for chamada de dentro de outra
+ * transação, participa daquela (ver runInTransaction em server/db.js) — é o que o teste
+ * de rollback usa pra forçar uma falha depois dos passos.
+ *
+ * Não valida nada: as pré-condições (status, caixa, motivo, papel) são conferidas na
+ * rota, antes de qualquer escrita.
+ */
+export function estornaComanda(db, ticket, { sessionId, userId, reason }) {
+  return runInTransaction(db, () => {
+    const itens = db.prepare('SELECT * FROM ticket_items WHERE ticketId = ?').all(ticket.id)
+    for (const it of itens) {
+      // Mesma devolução do cancelamento: o estoque saiu no lançamento do item, não no
+      // fechamento, então quem volta é a quantidade do item e o consumo de insumo.
+      if (it.kind === 'product' && it.refId) db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(it.qty, it.refId)
+      if (it.kind === 'service') reverseConsumablesForItem(db, it.id)
+    }
+    // Comissão zerada: o filtro status='closed' já tira a comanda de todo relatório,
+    // mas venda estornada não pode pagar comissão nem por consulta esquecida — é
+    // dinheiro saindo do caixa da barbearia.
+    db.prepare('UPDATE ticket_items SET commissionValue = 0 WHERE ticketId = ?').run(ticket.id)
+
+    // Movimento de estorno, e não uma sangria: a sangria tiraria da gaveta também o
+    // estorno de uma venda no cartão/pix, dinheiro que nunca entrou nela. Guardando a
+    // forma de pagamento original, a summary() do caixa desconta da forma certa e o
+    // esperado em dinheiro só muda quando a venda foi em dinheiro.
+    db.prepare('INSERT INTO cash_movements (sessionId, type, amount, method, description, ticketId, userId) VALUES (?,?,?,?,?,?,?)')
+      .run(sessionId, 'refund', ticket.total, ticket.paymentMethod, `Estorno da comanda #${ticket.id}`, ticket.id, userId || null)
+
+    // Devolve exatamente os pontos creditados no fechamento — recalcular pela config
+    // atual devolveria a mais ou a menos se o pontos-por-real tiver mudado desde a
+    // venda. Sem crédito registrado (fidelidade desligada, comanda sem cliente), nada
+    // a debitar.
+    const credito = db.prepare("SELECT SUM(points) AS pts FROM loyalty_movements WHERE ticketId = ? AND type='credito'").get(ticket.id)
+    if (ticket.clientId && credito?.pts > 0) {
+      db.prepare('INSERT INTO loyalty_movements (clientId, type, points, reason, ticketId, userId) VALUES (?,?,?,?,?,?)')
+        .run(ticket.clientId, 'debito', credito.pts, `Estorno da comanda #${ticket.id}`, ticket.id, userId || null)
+    }
+
+    db.prepare("UPDATE tickets SET status='refunded', refundedAt=datetime('now'), refundedBy=?, refundReason=? WHERE id=?")
+      .run(userId || null, reason, ticket.id)
+    return loadTicket(db, ticket.id)
+  })
+}
+
+// Estorno de venda fechada: desfaz dinheiro, estoque, comissão e pontos, então é da
+// administração — mesma régua do fechamento de caixa.
+r.post('/:id/refund', requireAdmin, wrap((req, res) => {
+  const db = getDb()
+  const id = asInt(req.params.id)
+  const t = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id)
+  if (!t) return res.status(404).json({ error: 'Comanda não encontrada.' })
+  if (t.status === 'refunded') return res.status(400).json({ error: 'Esta comanda já foi estornada.' })
+  if (t.status !== 'closed') return res.status(400).json({ error: 'Só dá para estornar comanda fechada.' })
+  const reason = String(req.body?.reason || '').trim()
+  if (!reason) return res.status(400).json({ error: 'Informe o motivo do estorno.' })
+
+  // O estorno tira dinheiro de um caixa aberto. Mexer em caixa já fechado mudaria a
+  // diferença de um fechamento que já foi conferido e assinado.
+  const session = db.prepare("SELECT * FROM cash_sessions WHERE status='open' ORDER BY id DESC LIMIT 1").get()
+  if (!session) return res.status(400).json({ error: 'Abra o caixa antes de estornar uma venda.' })
+  if (t.cashSessionId !== session.id) {
+    return res.status(400).json({ error: 'Esta venda foi lançada em um caixa que já foi fechado. Não dá para estornar — faça um ajuste no caixa atual.' })
+  }
+
+  res.json(estornaComanda(db, t, { sessionId: session.id, userId: req.user?.id, reason }))
 }))
 
 export default r
