@@ -1,13 +1,24 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../api.js'
+import { useAuth } from '../auth.jsx'
 import { useToast } from '../toast.jsx'
-import { brl, hm, utcDate, PAYMENT_LABELS, parseMoney } from '../util.js'
+import { brl, hm, dia, utcDate, today, PAYMENT_LABELS, parseMoney } from '../util.js'
 import { Spinner, Empty, Field, Modal } from '../components.jsx'
+
+// Mesmo padrão de período do Financeiro e do Estoque: começa no mês corrente.
+function monthStart() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10) }
 
 export default function Caixa() {
   const [state, setState] = useState(null)
   const [modal, setModal] = useState(null) // 'open' | 'close' | 'in' | 'out'
-  const toast = useToast()
+  const [aba, setAba] = useState('atual')  // 'atual' | 'historico'
+  const { user } = useAuth()
+
+  // O histórico é conferência de dinheiro já fechado, e o backend exige admin
+  // (requireAdmin, mesma régua do /close). Por isso a aba nem aparece pro balcão,
+  // em vez de aparecer e estourar 403 no clique.
+  const podeVerHistorico = user?.role === 'admin'
+  const noHistorico = podeVerHistorico && aba === 'historico'
 
   const load = useCallback(() => api('/cash/current').then(setState).catch(() => setState({ open: false })), [])
   useEffect(() => { load() }, [load])
@@ -18,12 +29,19 @@ export default function Caixa() {
     <>
       <div className="page-head">
         <div><div className="eyebrow">Operação</div><h1>Caixa</h1><p>Controle de abertura, fechamento e movimentações.</p></div>
-        {state.open
+        {!noHistorico && (state.open
           ? <button className="btn btn--danger" onClick={() => setModal('close')}>Fechar caixa</button>
-          : <button className="btn btn--primary" onClick={() => setModal('open')}>Abrir caixa</button>}
+          : <button className="btn btn--primary" onClick={() => setModal('open')}>Abrir caixa</button>)}
       </div>
 
-      {!state.open ? (
+      {podeVerHistorico && (
+        <div className="catalog-tabs">
+          <button className={`chip-tab${aba === 'atual' ? ' active' : ''}`} onClick={() => setAba('atual')}>Caixa atual</button>
+          <button className={`chip-tab${aba === 'historico' ? ' active' : ''}`} onClick={() => setAba('historico')}>Histórico</button>
+        </div>
+      )}
+
+      {noHistorico ? <Historico /> : !state.open ? (
         <div className="card"><div className="card__body"><Empty mark="▤" title="Caixa fechado" hint="Abra o caixa para começar a registrar vendas." /></div></div>
       ) : (
         <>
@@ -112,6 +130,181 @@ function CashModal({ kind, state, onClose, onDone }) {
       {(kind === 'in' || kind === 'out' || kind === 'close') && (
         <Field label={kind === 'close' ? 'Observações (opcional)' : 'Descrição'}><input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={kind === 'out' ? 'Ex.: pagamento de fornecedor' : 'Ex.: troco extra'} /></Field>
       )}
+    </Modal>
+  )
+}
+
+// "seg, 31 ago · 09:12 → 20:47", ou com as duas datas quando o caixa virou o dia.
+function periodo(s) {
+  const ab = utcDate(s.openedAt), fe = utcDate(s.closedAt)
+  if (!ab || !fe) return '—'
+  return ab.toDateString() === fe.toDateString()
+    ? `${dia(ab)} · ${hm(ab)} → ${hm(fe)}`
+    : `${dia(ab)} ${hm(ab)} → ${dia(fe)} ${hm(fe)}`
+}
+
+// Diferença é o número que a administração procura: zero é bom (teal), faltar
+// dinheiro é o alerta (oxblood) e sobrar também precisa de conferência (acento).
+function corDiferenca(d) {
+  if (!d) return 'var(--green-text)'
+  return d < 0 ? 'var(--oxblood-text)' : 'var(--accent-text)'
+}
+function rotuloDiferenca(d) {
+  if (!d) return 'bateu'
+  return d < 0 ? 'faltou' : 'sobrou'
+}
+
+function Diferenca({ valor }) {
+  return (
+    <>
+      <span style={{ color: corDiferenca(valor), fontWeight: 600 }}>{brl(valor)}</span>
+      <div className="faint" style={{ fontSize: 11 }}>{rotuloDiferenca(valor)}</div>
+    </>
+  )
+}
+
+// Caixas já fechados, filtrados por período. Só a administração chega aqui.
+function Historico() {
+  const [from, setFrom] = useState(monthStart())
+  const [to, setTo] = useState(today())
+  const [lista, setLista] = useState(null)
+  const [erro, setErro] = useState('')
+  const [detalhe, setDetalhe] = useState(null)
+
+  useEffect(() => {
+    let vivo = true
+    setLista(null); setErro('')
+    api(`/cash/history?from=${from}&to=${to}`)
+      .then((d) => { if (vivo) setLista(d) })
+      .catch((e) => { if (vivo) { setErro(e.message); setLista([]) } })
+    return () => { vivo = false }
+  }, [from, to])
+
+  return (
+    <>
+      <div className="card">
+        <div className="card__head">
+          <h2>Fechamentos</h2>
+          <div className="row" style={{ gap: 8 }}>
+            <input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 150 }} />
+            <span className="faint">até</span>
+            <input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 150 }} />
+          </div>
+        </div>
+        <div className="card__body" style={{ paddingTop: 6 }}>
+          {!lista ? <Spinner />
+            : erro ? <Empty mark="!" title="Não foi possível carregar o histórico" hint={erro} />
+              : lista.length === 0 ? <Empty mark="▤" title="Nenhum fechamento no período" hint="Ajuste as datas acima para ver outros caixas." />
+                : (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Período</th><th>Operou</th>
+                        <th className="num">Esperado</th><th className="num">Contado</th><th className="num">Diferença</th><th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lista.map((s) => (
+                        <tr key={s.id} onClick={() => setDetalhe(s.id)} style={{ cursor: 'pointer' }} title="Ver as movimentações deste caixa">
+                          <td style={{ fontWeight: 600 }}>{periodo(s)}</td>
+                          <td className="muted">
+                            {s.closedByName || s.openedByName || '—'}
+                            {s.openedByName && s.closedByName && s.openedByName !== s.closedByName && (
+                              <div className="faint" style={{ fontSize: 11 }}>abriu: {s.openedByName}</div>
+                            )}
+                          </td>
+                          <td className="num">{brl(s.expectedCash)}</td>
+                          <td className="num">{brl(s.closingCounted)}</td>
+                          <td className="num"><Diferenca valor={s.difference} /></td>
+                          <td className="right"><button className="btn btn--ghost btn--sm">Detalhes</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+        </div>
+      </div>
+
+      {detalhe && <DetalheModal id={detalhe} onClose={() => setDetalhe(null)} />}
+    </>
+  )
+}
+
+function DetalheModal({ id, onClose }) {
+  const [d, setD] = useState(null)
+  const [erro, setErro] = useState('')
+
+  useEffect(() => {
+    let vivo = true
+    api(`/cash/history/${id}`)
+      .then((r) => { if (vivo) setD(r) })
+      .catch((e) => { if (vivo) setErro(e.message) })
+    return () => { vivo = false }
+  }, [id])
+
+  const linha = (label, valor, extra) => (
+    <div className="spread" key={label} style={{ padding: '8px 0', borderBottom: '1px solid var(--line-soft)' }}>
+      <span className="muted">{label}</span>
+      <span className="money" style={extra}>{valor}</span>
+    </div>
+  )
+
+  return (
+    <Modal wide title="Detalhe do fechamento" onClose={onClose}
+      footer={<button className="btn" onClick={onClose}>Fechar</button>}>
+      {erro ? <Empty mark="!" title="Não foi possível carregar o detalhe" hint={erro} />
+        : !d ? <Spinner /> : (
+          <>
+            <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+              {periodo(d.session)}
+              {d.session.openedByName && <> · abriu: {d.session.openedByName}</>}
+              {d.session.closedByName && <> · fechou: {d.session.closedByName}</>}
+            </p>
+
+            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+              <div>
+                <h3 className="eyebrow" style={{ marginBottom: 6 }}>Conferência</h3>
+                {linha('Troco inicial', brl(d.session.openingFloat))}
+                {linha('Vendas na sessão', brl(d.summary.salesTotal))}
+                {linha('Reforços', brl(d.summary.cashIn))}
+                {linha('Sangrias', `−${brl(d.summary.cashOut)}`, { color: 'var(--oxblood-text)' })}
+                {linha('Esperado em dinheiro', brl(d.session.expectedCash))}
+                {linha('Contado na gaveta', brl(d.session.closingCounted))}
+                <div className="spread" style={{ padding: '8px 0' }}>
+                  <span className="muted">Diferença</span>
+                  <span className="money right"><Diferenca valor={d.session.difference} /></span>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="eyebrow" style={{ marginBottom: 6 }}>Por forma de pagamento</h3>
+                {Object.entries(PAYMENT_LABELS).map(([k, v]) => linha(v, brl(d.summary.byMethod[k] || 0)))}
+                {d.session.notes && (
+                  <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+                    <strong>Observações:</strong> {d.session.notes}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <h3 className="eyebrow" style={{ margin: '18px 0 6px' }}>Movimentações</h3>
+            {d.movements.length === 0 ? <Empty mark="—" title="Sem movimentações neste caixa" /> : (
+              <table className="table">
+                <thead><tr><th>Hora</th><th>Tipo</th><th>Descrição</th><th className="num">Valor</th></tr></thead>
+                <tbody>
+                  {d.movements.map((m) => (
+                    <tr key={m.id}>
+                      <td className="mono">{hm(utcDate(m.createdAt))}</td>
+                      <td>{m.type === 'sale' ? 'Venda' : m.type === 'in' ? 'Reforço' : 'Sangria'}{m.method && m.type === 'sale' ? ` · ${PAYMENT_LABELS[m.method] || m.method}` : ''}</td>
+                      <td className="muted">{m.description}</td>
+                      <td className="num" style={{ color: m.type === 'out' ? 'var(--oxblood)' : 'var(--cream)' }}>{m.type === 'out' ? '−' : ''}{brl(m.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
     </Modal>
   )
 }
