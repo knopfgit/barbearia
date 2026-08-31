@@ -257,8 +257,8 @@ label.field { display: block; margin-bottom: 13px; }
 }
 .badge--scheduled { color: var(--state-orange-fg); border-color: var(--state-orange-line); background: var(--state-orange-bg); }
 .badge--confirmed { color: var(--state-green-fg); border-color: var(--state-green-line); background: var(--state-green-bg); }
-.badge--done { color: var(--state-blue-fg); border-color: var(--state-blue-line); background: var(--state-blue-bg); }
-.badge--canceled, .badge--noshow { color: var(--state-red-fg); border-color: var(--state-red-line); background: var(--state-red-bg); }
+.badge--done, .badge--closed { color: var(--state-blue-fg); border-color: var(--state-blue-line); background: var(--state-blue-bg); }
+.badge--canceled, .badge--noshow, .badge--refunded { color: var(--state-red-fg); border-color: var(--state-red-line); background: var(--state-red-bg); }
 .badge--open { color: var(--accent-text); border-color: var(--accent-dim); background: var(--accent-a10); }
 .badge--bronze { color: var(--bronze-fg); border-color: var(--bronze-line); background: var(--bronze-a12); }
 .badge--prata { color: var(--prata-fg); border-color: var(--prata-line); background: var(--prata-a12); }

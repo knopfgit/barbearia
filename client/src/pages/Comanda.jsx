@@ -1,27 +1,32 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
+import { useAuth } from '../auth.jsx'
 import { useToast } from '../toast.jsx'
-import { brl, hm, utcDate, PAYMENT_LABELS, parseMoney } from '../util.js'
+import { brl, hm, dia, utcDate, PAYMENT_LABELS, TICKET_STATUS_LABELS, parseMoney } from '../util.js'
 import { Spinner, Empty, Field, Modal } from '../components.jsx'
 
 export default function Comanda() {
   const [params, setParams] = useSearchParams()
   const selectedId = params.get('id')
   const [open, setOpen] = useState(null)
+  const [fechadas, setFechadas] = useState(null)
+  const [aba, setAba] = useState('abertas')
   const [barbers, setBarbers] = useState([])
   const [clients, setClients] = useState([])
-  const toast = useToast()
 
   const loadOpen = useCallback(() => { api('/tickets?status=open').then(setOpen).catch(() => setOpen([])) }, [])
-  useEffect(() => { loadOpen() }, [loadOpen])
+  // Fechadas do caixa ABERTO: é o que ainda dá para estornar (o backend recusa venda
+  // de caixa já fechado), e a lista não cresce para sempre como "todas as fechadas".
+  const loadFechadas = useCallback(() => { api('/tickets?session=atual').then(setFechadas).catch(() => setFechadas([])) }, [])
+  useEffect(() => { loadOpen(); loadFechadas() }, [loadOpen, loadFechadas])
   useEffect(() => { api('/barbers').then(setBarbers); api('/clients').then(setClients) }, [])
 
   function select(id) { setParams(id ? { id } : {}) }
 
   if (selectedId) {
-    return <ComandaEditor id={selectedId} barbers={barbers} clients={clients}
-      onBack={() => { select(null); loadOpen() }} />
+    return <ComandaDetalhe id={selectedId} barbers={barbers} clients={clients}
+      onBack={() => { select(null); loadOpen(); loadFechadas() }} />
   }
 
   return (
@@ -31,21 +36,48 @@ export default function Comanda() {
       </div>
       <div className="grid" style={{ gridTemplateColumns: '1fr 320px' }}>
         <div className="card">
-          <div className="card__head"><h2>Comandas abertas</h2></div>
+          <div className="card__head">
+            <div className="catalog-tabs" style={{ marginBottom: 0 }}>
+              <button className={`chip-tab${aba === 'abertas' ? ' active' : ''}`} onClick={() => setAba('abertas')}>Abertas</button>
+              <button className={`chip-tab${aba === 'fechadas' ? ' active' : ''}`} onClick={() => setAba('fechadas')}>Fechadas neste caixa</button>
+            </div>
+          </div>
           <div className="card__body" style={{ paddingTop: 8 }}>
-            {!open ? <Spinner /> : open.length === 0 ? (
-              <Empty mark="✂" title="Nenhuma comanda aberta" hint="Abra uma nova ao lado ou pela agenda." />
-            ) : open.map((t) => (
-              <button key={t.id} className="slot" onClick={() => select(t.id)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}>
-                <div className="slot__time" style={{ fontSize: 15, width: 44 }}>#{t.id}</div>
-                <div className="slot__bar" style={{ background: 'var(--accent)' }} />
-                <div className="slot__main">
-                  <div className="slot__client">{t.clientName || t.guestName || 'Avulso'}</div>
-                  <div className="slot__meta">{t.barberName || 'Sem profissional'} · aberta {hm(utcDate(t.openedAt))}</div>
-                </div>
-                <span className="money" style={{ color: 'var(--accent-text)' }}>{brl(t.total)}</span>
-              </button>
-            ))}
+            {aba === 'abertas' ? (
+              !open ? <Spinner /> : open.length === 0 ? (
+                <Empty mark="✂" title="Nenhuma comanda aberta" hint="Abra uma nova ao lado ou pela agenda." />
+              ) : open.map((t) => (
+                <button key={t.id} className="slot" onClick={() => select(t.id)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+                  <div className="slot__time" style={{ fontSize: 15, width: 44 }}>#{t.id}</div>
+                  <div className="slot__bar" style={{ background: 'var(--accent)' }} />
+                  <div className="slot__main">
+                    <div className="slot__client">{t.clientName || t.guestName || 'Avulso'}</div>
+                    <div className="slot__meta">{t.barberName || 'Sem profissional'} · aberta {hm(utcDate(t.openedAt))}</div>
+                  </div>
+                  <span className="money" style={{ color: 'var(--accent-text)' }}>{brl(t.total)}</span>
+                </button>
+              ))
+            ) : (
+              !fechadas ? <Spinner /> : fechadas.length === 0 ? (
+                <Empty mark="▤" title="Nenhuma comanda fechada neste caixa" hint="Aparecem aqui as vendas cobradas desde a abertura do caixa." />
+              ) : fechadas.map((t) => (
+                <button key={t.id} className="slot" onClick={() => select(t.id)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+                  <div className="slot__time" style={{ fontSize: 15, width: 44 }}>#{t.id}</div>
+                  <div className="slot__bar" style={{ background: t.status === 'refunded' ? 'var(--oxblood)' : 'var(--green)' }} />
+                  <div className="slot__main">
+                    <div className="slot__client">{t.clientName || t.guestName || 'Avulso'}</div>
+                    <div className="slot__meta">
+                      {PAYMENT_LABELS[t.paymentMethod] || '—'} · fechada {hm(utcDate(t.closedAt))}
+                      {t.status === 'refunded' && ' · estornada'}
+                    </div>
+                  </div>
+                  <span className="money" style={{
+                    color: t.status === 'refunded' ? 'var(--faint)' : 'var(--cream)',
+                    textDecoration: t.status === 'refunded' ? 'line-through' : 'none',
+                  }}>{brl(t.total)}</span>
+                </button>
+              ))
+            )}
           </div>
         </div>
         <NewComanda barbers={barbers} clients={clients} onCreated={(id) => select(id)} />
@@ -84,6 +116,154 @@ function NewComanda({ barbers, clients, onCreated }) {
         <button className="btn btn--primary btn--block" onClick={create}>Abrir comanda</button>
       </div>
     </div>
+  )
+}
+
+/**
+ * Decide qual tela abrir para a comanda selecionada: o PDV só serve para comanda
+ * ABERTA (catálogo, desconto, fechamento). Fechada, cancelada ou estornada abre a
+ * visão de leitura — que é onde mora o estorno.
+ */
+function ComandaDetalhe({ id, barbers, clients, onBack }) {
+  const [status, setStatus] = useState(null)
+
+  useEffect(() => {
+    let vivo = true
+    setStatus(null)
+    api(`/tickets/${id}`)
+      .then((t) => { if (vivo) setStatus(t.status) })
+      .catch(() => { if (vivo) setStatus('erro') })
+    return () => { vivo = false }
+  }, [id])
+
+  if (status === null) return <Spinner />
+  if (status === 'erro') {
+    return (
+      <div className="card"><div className="card__body">
+        <Empty mark="!" title="Comanda não encontrada" hint="Ela pode ter sido removida." />
+        <div className="row" style={{ justifyContent: 'center' }}><button className="btn" onClick={onBack}>← Voltar</button></div>
+      </div></div>
+    )
+  }
+  return status === 'open'
+    ? <ComandaEditor id={id} barbers={barbers} clients={clients} onBack={onBack} />
+    : <ComandaFechada id={id} onBack={onBack} />
+}
+
+// Comanda já cobrada: leitura, sem catálogo nem pagamento. O botão de estorno só
+// aparece para a administração (o backend também exige, com requireAdmin) e só
+// enquanto a venda ainda é estornável.
+function ComandaFechada({ id, onBack }) {
+  const [t, setT] = useState(null)
+  const [modal, setModal] = useState(false)
+  const { user } = useAuth()
+
+  const load = useCallback(() => api(`/tickets/${id}`).then(setT).catch(() => setT(null)), [id])
+  useEffect(() => { load() }, [load])
+
+  if (!t) return <Spinner />
+  const estornada = t.status === 'refunded'
+  const podeEstornar = user?.role === 'admin' && t.status === 'closed'
+  const comissaoTotal = (t.items || []).reduce((soma, i) => soma + i.commissionValue, 0)
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">
+            Comanda #{t.id} · <span className={`badge badge--${t.status}`}>{TICKET_STATUS_LABELS[t.status] || t.status}</span>
+          </div>
+          <h1>{t.clientName || t.guestName || 'Cliente avulso'}</h1>
+          <p>
+            {t.closedAt ? `Fechada em ${dia(utcDate(t.closedAt))} às ${hm(utcDate(t.closedAt))}` : 'Comanda não cobrada'}
+            {t.paymentMethod && ` · ${PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod}`}
+          </p>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          {podeEstornar && <button className="btn btn--danger" onClick={() => setModal(true)}>Estornar</button>}
+          <button className="btn" onClick={onBack}>← Voltar</button>
+        </div>
+      </div>
+
+      {estornada && (
+        <div className="card" style={{ marginBottom: 16, borderColor: 'var(--oxblood)' }}>
+          <div className="card__body">
+            <strong style={{ color: 'var(--oxblood-text)' }}>Venda estornada</strong>
+            <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              Motivo: {t.refundReason || '—'}
+              {t.refundedAt && ` · em ${dia(utcDate(t.refundedAt))} às ${hm(utcDate(t.refundedAt))}`}
+            </p>
+            <p className="faint" style={{ margin: '4px 0 0', fontSize: 12 }}>
+              O estoque foi devolvido, o valor saiu do caixa e a comissão e os pontos foram estornados.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="card comanda" style={{ maxWidth: 560 }}>
+        <div className="card__head"><h2>Itens</h2></div>
+        <div className="card__body">
+          {(t.items || []).length === 0 ? <Empty mark="—" title="Comanda sem itens" /> : t.items.map((i) => (
+            <div className="comanda__item" key={i.id}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{i.description}{i.qty > 1 ? ` ×${i.qty}` : ''}</div>
+                <div className="faint" style={{ fontSize: 11.5 }}>
+                  {i.barberName || '—'} · comissão {brl(i.commissionValue)}
+                  {estornada && ' (estornada)'}
+                </div>
+              </div>
+              <span className="money" style={{ fontSize: 13 }}>{brl(i.total)}</span>
+            </div>
+          ))}
+
+          <hr className="hr" />
+          <div className="comanda__totline"><span className="muted">Subtotal</span><strong>{brl(t.subtotal)}</strong></div>
+          {t.discount > 0 && <div className="comanda__totline"><span className="muted">Desconto</span><strong>−{brl(t.discount)}</strong></div>}
+          <div className="comanda__totline">
+            <span>Total</span>
+            <span className="comanda__grand" style={{ color: estornada ? 'var(--faint)' : 'var(--accent-text)', textDecoration: estornada ? 'line-through' : 'none' }}>{brl(t.total)}</span>
+          </div>
+          <div className="faint" style={{ fontSize: 11.5, textAlign: 'right', marginTop: 2 }}>comissão total {brl(comissaoTotal)}</div>
+        </div>
+      </div>
+
+      {modal && <EstornoModal ticket={t} onClose={() => setModal(false)} onDone={() => { setModal(false); load() }} />}
+    </>
+  )
+}
+
+function EstornoModal({ ticket, onClose, onDone }) {
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const toast = useToast()
+
+  async function submit() {
+    if (!reason.trim()) return toast.erro('Informe o motivo do estorno.')
+    setBusy(true)
+    try {
+      await api(`/tickets/${ticket.id}/refund`, { method: 'POST', body: { reason } })
+      toast.ok(`Comanda #${ticket.id} estornada.`); onDone()
+    } catch (e) { toast.erro(e.message); setBusy(false) }
+  }
+
+  return (
+    <Modal title={`Estornar comanda #${ticket.id}`} onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>Cancelar</button>
+        <button className="btn btn--danger" onClick={submit} disabled={busy}>{busy ? 'Estornando…' : 'Confirmar estorno'}</button>
+      </>}>
+      <p style={{ marginTop: 0 }}>
+        Esta ação desfaz a venda de <strong className="money">{brl(ticket.total)}</strong>: devolve estoque,
+        retira o valor do caixa e estorna comissão e pontos. Continuar?
+      </p>
+      <p className="faint" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+        A comanda não reabre — ela fica registrada como estornada, com o seu nome e o motivo.
+      </p>
+      <Field label="Motivo do estorno">
+        <input className="input" autoFocus value={reason} onChange={(e) => setReason(e.target.value)}
+          placeholder="Ex.: cliente desistiu do produto" />
+      </Field>
+    </Modal>
   )
 }
 

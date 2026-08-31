@@ -5,6 +5,11 @@ import { useToast } from '../toast.jsx'
 import { brl, hm, dia, utcDate, today, PAYMENT_LABELS, parseMoney } from '../util.js'
 import { Spinner, Empty, Field, Modal } from '../components.jsx'
 
+// Movimentos do caixa. 'refund' é o estorno de comanda: sai da gaveta (ou da forma
+// de pagamento original) como valor negativo, igual à sangria.
+const MOV_LABELS = { sale: 'Venda', in: 'Reforço', out: 'Sangria', refund: 'Estorno' }
+const movNegativo = (tipo) => tipo === 'out' || tipo === 'refund'
+
 // Mesmo padrão de período do Financeiro e do Estoque: começa no mês corrente.
 function monthStart() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10) }
 
@@ -78,9 +83,9 @@ export default function Caixa() {
                       {state.movements.map((m) => (
                         <tr key={m.id}>
                           <td className="mono">{hm(utcDate(m.createdAt))}</td>
-                          <td>{m.type === 'sale' ? 'Venda' : m.type === 'in' ? 'Reforço' : 'Sangria'}{m.method && m.type === 'sale' ? ` · ${PAYMENT_LABELS[m.method] || m.method}` : ''}</td>
+                          <td>{MOV_LABELS[m.type] || m.type}{m.method && m.type !== 'in' && m.type !== 'out' ? ` · ${PAYMENT_LABELS[m.method] || m.method}` : ''}</td>
                           <td className="muted">{m.description}</td>
-                          <td className="num" style={{ color: m.type === 'out' ? 'var(--oxblood)' : 'var(--cream)' }}>{m.type === 'out' ? '−' : ''}{brl(m.amount)}</td>
+                          <td className="num" style={{ color: movNegativo(m.type) ? 'var(--oxblood)' : 'var(--cream)' }}>{movNegativo(m.type) ? '−' : ''}{brl(m.amount)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -266,6 +271,7 @@ function DetalheModal({ id, onClose }) {
                 <h3 className="eyebrow" style={{ marginBottom: 6 }}>Conferência</h3>
                 {linha('Troco inicial', brl(d.session.openingFloat))}
                 {linha('Vendas na sessão', brl(d.summary.salesTotal))}
+                {d.summary.refundsTotal > 0 && linha('Estornos', `−${brl(d.summary.refundsTotal)}`, { color: 'var(--oxblood-text)' })}
                 {linha('Reforços', brl(d.summary.cashIn))}
                 {linha('Sangrias', `−${brl(d.summary.cashOut)}`, { color: 'var(--oxblood-text)' })}
                 {linha('Esperado em dinheiro', brl(d.session.expectedCash))}
@@ -295,9 +301,9 @@ function DetalheModal({ id, onClose }) {
                   {d.movements.map((m) => (
                     <tr key={m.id}>
                       <td className="mono">{hm(utcDate(m.createdAt))}</td>
-                      <td>{m.type === 'sale' ? 'Venda' : m.type === 'in' ? 'Reforço' : 'Sangria'}{m.method && m.type === 'sale' ? ` · ${PAYMENT_LABELS[m.method] || m.method}` : ''}</td>
+                      <td>{MOV_LABELS[m.type] || m.type}{m.method && m.type !== 'in' && m.type !== 'out' ? ` · ${PAYMENT_LABELS[m.method] || m.method}` : ''}</td>
                       <td className="muted">{m.description}</td>
-                      <td className="num" style={{ color: m.type === 'out' ? 'var(--oxblood)' : 'var(--cream)' }}>{m.type === 'out' ? '−' : ''}{brl(m.amount)}</td>
+                      <td className="num" style={{ color: movNegativo(m.type) ? 'var(--oxblood)' : 'var(--cream)' }}>{movNegativo(m.type) ? '−' : ''}{brl(m.amount)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -104,6 +104,11 @@ export function initials(name) {
   return String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 }
 export const PAYMENT_LABELS = { dinheiro: 'Dinheiro', debito: 'Débito', credito: 'Crédito', pix: 'Pix' }
+// Status da COMANDA (tickets). Fica separado do STATUS_LABELS de agendamento: os
+// dois têm 'canceled', mas o resto não se parece.
+export const TICKET_STATUS_LABELS = {
+  open: 'Aberta', closed: 'Fechada', canceled: 'Cancelada', refunded: 'Estornada',
+}
 export const STATUS_LABELS = {
   scheduled: 'Agendado', confirmed: 'Confirmado', done: 'Atendido', canceled: 'Cancelado', noshow: 'Faltou',
 }
