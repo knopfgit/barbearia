@@ -47,6 +47,14 @@ const DESENHOS = {
   configuracoes: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></>,
   // Menu do celular
   menu: <path d="M3.5 7h17M3.5 12h17M3.5 17h17" />,
+  // Ticket médio: etiqueta de preço
+  ticket: <><path d="M20.5 12.5 12.8 20.2a2 2 0 0 1-2.8 0l-6.2-6.2a2 2 0 0 1-.6-1.4V5a2 2 0 0 1 2-2h7.6a2 2 0 0 1 1.4.6l6.3 6.3a2 2 0 0 1 0 2.6Z" /><path d="M7.5 7.5h.01" /></>,
+  // Alta: seta subindo (variação positiva)
+  alta: <><path d="M3 17 9.5 10.5l4 4L21 7" /><path d="M15 7h6v6" /></>,
+  // Baixa: seta descendo
+  baixa: <><path d="M3 7l6.5 6.5 4-4L21 17" /><path d="M15 17h6v-6" /></>,
+  // Relógio: espera / próximos horários
+  relogio: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5.2l3.2 1.9" /></>,
 }
 
 export function Icone({ nome, size = 18, className }) {

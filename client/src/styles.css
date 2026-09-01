@@ -503,6 +503,93 @@ label.field { display: block; margin-bottom: var(--sp-4); }
 .busca__sel { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3); border: 1px solid var(--accent-dim); border-radius: var(--radius-sm); background: var(--accent-a06); }
 .busca__sel-nome { font-size: var(--fs-base); font-weight: 600; }
 
+/* ---------- painel ---------- */
+/* Faixa de abertura: é a primeira coisa que o balcão vê ao entrar, então carrega o
+   resumo vivo do dia e a ação principal. O gradiente e a hélice em dose baixa
+   amarram com o poste da lateral — a marca aparece, sem virar enfeite. */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, var(--ink-3) 0%, var(--ink-2) 46%, var(--ink-2) 100%);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-6) var(--sp-7);
+  margin-bottom: var(--sp-secao);
+  display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-5); flex-wrap: wrap;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(118deg, transparent 0 34px, var(--accent-a05) 34px 52px);
+}
+.hero::after {
+  content: ''; position: absolute; right: -60px; top: -80px; width: 300px; height: 300px;
+  border-radius: 50%; background: radial-gradient(circle, var(--accent-a12), transparent 68%);
+  pointer-events: none;
+}
+.hero__conteudo { position: relative; z-index: 1; min-width: 0; }
+.hero h1 { font-size: var(--fs-2xl); font-weight: 700; margin: var(--sp-2) 0 0; }
+.hero__acoes { position: relative; z-index: 1; display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+/* Resumo do dia: cada pastilha é um número REAL do momento. */
+.hero__resumo { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-4); }
+/* A pastilha tem base OPACA de propósito. Com fundo translúcido, o gradiente do
+   hero vazava por baixo e clareava a base: o texto caía pra 3,9:1 e reprovava em
+   AA. O tint do estado ativo é pintado POR CIMA do petróleo (duas camadas), então
+   o contraste não depende de onde a pastilha caiu no gradiente. */
+.pilula {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px var(--sp-3); border-radius: 999px;
+  border: 1px solid var(--line); background: var(--ink);
+  font-size: var(--fs-xs); color: var(--muted);
+}
+.pilula strong { color: var(--cream); font-weight: 600; }
+.pilula .ic { width: 14px; height: 14px; flex: none; opacity: .8; }
+.pilula--ativa {
+  border-color: var(--accent-dim); color: var(--accent-text);
+  background: linear-gradient(var(--accent-a16), var(--accent-a16)), var(--ink);
+}
+.pilula--ativa strong { color: var(--accent-text); }
+
+/* KPI com ícone: o ícone dá temperatura ao cartão sem roubar o número. */
+.kpi__topo { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.kpi__icone {
+  width: 38px; height: 38px; border-radius: var(--radius-sm); flex: none;
+  display: grid; place-items: center;
+  border: 1px solid var(--line); background: var(--ink-3); color: var(--accent-text);
+}
+.kpi--dinheiro .kpi__icone { color: var(--accent-text); border-color: var(--accent-dim); background: var(--accent-a10); }
+.kpi--teal .kpi__icone     { color: var(--green-text);  border-color: var(--green);      background: var(--green-a16); }
+.kpi--azul .kpi__icone     { color: var(--state-blue-fg); border-color: var(--state-blue-line); background: var(--state-blue-bg); }
+.kpi--alerta .kpi__icone   { color: var(--oxblood-text); border-color: var(--state-red-line); background: var(--state-red-bg); }
+
+/* Mini-gráfico de 7 dias: barras em CSS puro, sem biblioteca — a mesma técnica do
+   gráfico do Financeiro, que já é do sistema. */
+.spark { display: flex; align-items: flex-end; gap: var(--sp-2); height: 150px; padding-top: var(--sp-3); }
+.spark__col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); min-width: 0; }
+.spark__barra {
+  width: 100%; border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+  min-height: 3px; transition: filter var(--t-rapido) var(--ease);
+}
+.spark__col:hover .spark__barra { filter: brightness(1.18); }
+.spark__col--hoje .spark__barra { background: linear-gradient(180deg, var(--accent-glow), var(--accent)); }
+.spark__vazia { background: var(--ink-3); }
+.spark__dia { font-size: var(--fs-nano); color: var(--faint); white-space: nowrap; }
+.spark__col--hoje .spark__dia { color: var(--accent-text); font-weight: 600; }
+
+/* Ranking do dia: posição, quem é, quanto produziu e a barra proporcional ao 1º. */
+.rank { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) 0; border-bottom: 1px solid var(--line-soft); }
+.rank:last-child { border-bottom: none; }
+.rank__pos {
+  width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-family: var(--label); font-size: var(--fs-nano); font-weight: 600;
+  background: var(--ink-3); color: var(--muted); border: 1px solid var(--line);
+}
+.rank--primeiro .rank__pos { background: var(--accent-a16); color: var(--accent-text); border-color: var(--accent-dim); }
+.rank__corpo { flex: 1; min-width: 0; }
+.rank__nome { font-size: var(--fs-sm); font-weight: 600; }
+.rank__meta { font-size: var(--fs-nano); color: var(--faint); margin-top: 2px; }
+.rank__valor { font-family: var(--mono); font-size: var(--fs-sm); color: var(--accent-text); }
+
 /* ---------- agenda ---------- */
 .agenda-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-5); }
 /* Uma linguagem só de estado: superfície clicável muda a borda pro laranja e sobe
@@ -653,6 +740,11 @@ label.field { display: block; margin-bottom: var(--sp-4); }
      descem pra segunda linha em vez de sair pela direita. */
   .slot { flex-wrap: wrap; }
   .slot__main { flex: 1 1 60%; }
+  /* No celular o hero ocupava 42% da tela: mesma informação, menos moldura. */
+  .hero { padding: var(--sp-5); }
+  .hero__acoes { width: 100%; }
+  .hero__acoes .btn { flex: 1; }
+  .spark { height: 128px; gap: var(--sp-1); }
   .comanda { position: static; }
   .mobile-bar { display: flex !important; }
 }
