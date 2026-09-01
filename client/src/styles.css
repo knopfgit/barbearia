@@ -434,7 +434,17 @@ label.field { display: block; margin-bottom: var(--sp-4); }
    embaixo. A barra laranja que se repetia idêntica nos quatro cartões saiu — quatro
    vezes o mesmo enfeite não hierarquiza nada, só some de vista. Quem carrega o
    cartão é o número, que é o que a pessoa veio ler. */
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--sp-5); }
+/* Mínimo de 240 e não 200: com 200, o cartão tem 171px úteis e "R$ 2.430,00" em
+   mono 26px já pede 172 — ou seja, um dia bom de barbearia estourava a caixa numa
+   janela mais estreita. Com 240 sobram 192px, que aguentam até a casa dos milhares
+   sem cortar. Medido no canvas, não no olho. */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-5); }
+/* Quatro cartões só cabem lado a lado a partir de ~1348px de janela (4x240 + gaps
+   + a lateral). Abaixo disso o auto-fit dava 3 + 1, deixando um cartão órfão na
+   segunda linha; em duas colunas a fileira fecha certinho e o dinheiro continua
+   com folga de sobra. */
+@media (max-width: 1347px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px)  { .kpis { grid-template-columns: 1fr; } }
 .kpi {
   background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius);
   padding: var(--sp-6); box-shadow: var(--shadow-card);
@@ -443,8 +453,18 @@ label.field { display: block; margin-bottom: var(--sp-4); }
   font-family: var(--label); font-size: var(--fs-nano); font-weight: 500;
   text-transform: uppercase; letter-spacing: .18em; color: var(--faint);
 }
-.kpi__value { font-family: var(--label); font-weight: 600; font-size: var(--fs-2xl); line-height: 1.05; margin-top: var(--sp-3); letter-spacing: -.015em; }
-.kpi__value.money { font-family: var(--mono); font-size: var(--fs-xl); font-weight: 600; letter-spacing: -.03em; }
+/* Todo NÚMERO da fileira tem o mesmo corpo, seja contagem (Oswald) ou dinheiro
+   (mono). Antes o dinheiro saía a 26px e a contagem a 34px: como a mono ainda é
+   mais estreita que a Oswald, o cartão de status ("Aberto") acabava com o maior
+   tipo da tela e o FATURAMENTO, que é o número que a pessoa veio ler, com o menor.
+   Hierarquia invertida.
+   26px e não 34: "R$ 9.999,99" em mono a 34px passa de 220px e estoura a largura
+   do cartão. O tamanho aqui é o que cabe no pior caso real, não o que fica bonito
+   com o número pequeno de hoje. */
+.kpi__value { font-family: var(--label); font-weight: 600; font-size: var(--fs-xl); line-height: 1.1; margin-top: var(--sp-3); letter-spacing: -.015em; }
+.kpi__value.money { font-family: var(--mono); font-weight: 600; letter-spacing: -.03em; }
+/* Status é palavra, não medida: não disputa tamanho com número. */
+.kpi__value--texto { font-size: var(--fs-lg); letter-spacing: 0; }
 .kpi__foot { font-size: var(--fs-xs); color: var(--muted); margin-top: var(--sp-3); }
 /* Sinal do indicador. Só é usado onde existe um estado REAL pra mostrar (caixa
    aberto, estoque abaixo do mínimo); não há dado de comparação de período na API,
@@ -456,8 +476,14 @@ label.field { display: block; margin-bottom: var(--sp-4); }
 .kpi__ponto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
 
 /* estado vazio */
-.empty { text-align: center; padding: var(--sp-8) var(--sp-5); color: var(--muted); }
-.empty__mark { font-size: var(--fs-xl); margin-bottom: var(--sp-3); opacity: .45; line-height: 1; }
+/* 40px de respiro dentro de um cartão que já tem 24 fazia cada estado vazio virar
+   uma caixa oca de ~250px: com a barbearia parada, a tela inteira ficava com cara
+   de vazio. O vazio continua arejado, sem ocupar meia tela. */
+.empty { text-align: center; padding: var(--sp-6) var(--sp-5); color: var(--muted); }
+.empty__mark {
+  display: flex; justify-content: center; font-size: var(--fs-xl);
+  margin-bottom: var(--sp-3); opacity: .5; line-height: 1; color: var(--faint);
+}
 .empty p { margin: 0 0 var(--sp-1); font-size: var(--fs-base); color: var(--cream); }
 .empty small { color: var(--faint); font-size: var(--fs-sm); }
 

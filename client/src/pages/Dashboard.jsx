@@ -149,7 +149,7 @@ export default function Dashboard() {
             <div className="kpi__label">Caixa</div>
             <span className="kpi__icone"><Icone nome="caixa" size={19} /></span>
           </div>
-          <div className="kpi__value">{d.cashOpen ? 'Aberto' : 'Fechado'}</div>
+          <div className="kpi__value kpi__value--texto">{d.cashOpen ? 'Aberto' : 'Fechado'}</div>
           <div className="kpi__foot">
             <span className={`kpi__delta kpi__delta--${d.cashOpen ? 'positivo' : 'negativo'}`}>
               <i className="kpi__ponto" />{d.cashOpen ? 'pronto para vender' : 'abra para registrar vendas'}
@@ -159,7 +159,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid--principal" style={{ marginBottom: 'var(--sp-secao)' }}>
+      <div className="grid grid--principal" style={{ marginBottom: 'var(--sp-secao)', alignItems: 'start' }}>
         <div className="card">
           <div className="card__head">
             <div>
@@ -170,7 +170,7 @@ export default function Dashboard() {
           </div>
           <div className="card__body">
             {semana.every((x) => !x.total) ? (
-              <Empty mark="▁" title="Nenhuma venda nos últimos 7 dias" hint="As barras aparecem conforme as comandas são fechadas." />
+              <Empty mark={<Icone nome="financeiro" size={26} />} title="Nenhuma venda nos últimos 7 dias" hint="As barras aparecem conforme as comandas são fechadas." />
             ) : (
               <div className="spark">
                 {semana.map((x) => (
@@ -202,12 +202,12 @@ export default function Dashboard() {
                 </div>
                 <span className="rank__valor">{brl(b.revenue)}</span>
               </div>
-            )) : <Empty mark="♞" title="Sem produção registrada hoje" hint="Feche uma comanda para o ranking aparecer." />}
+            )) : <Empty mark={<Icone nome="profissionais" size={26} />} title="Sem produção registrada hoje" hint="Feche uma comanda para o ranking aparecer." />}
           </div>
         </div>
       </div>
 
-      <div className="grid grid--principal">
+      <div className="grid grid--principal" style={{ alignItems: 'start' }}>
         <div className="card">
           <div className="card__head">
             <h2>Próximos horários</h2>
@@ -224,7 +224,7 @@ export default function Dashboard() {
                 </div>
                 <StatusBadge status={a.status} />
               </div>
-            )) : <Empty mark="🗓" title="Nenhum horário restante hoje" hint="Novos agendamentos aparecem aqui." />}
+            )) : <Empty mark={<Icone nome="relogio" size={26} />} title="Nenhum horário restante hoje" hint="Novos agendamentos aparecem aqui." />}
           </div>
         </div>
 
@@ -240,7 +240,7 @@ export default function Dashboard() {
                     <span className="money" style={{ color: 'var(--accent-text)' }}>{brl(d.topServiceToday.total)}</span>
                   </div>
                 </>
-              ) : <Empty mark="≣" title="Nenhum serviço vendido hoje" />}
+              ) : <Empty mark={<Icone nome="servicos" size={26} />} title="Nenhum serviço vendido hoje" />}
             </div>
           </div>
 
@@ -252,7 +252,7 @@ export default function Dashboard() {
                   <StatusBadge status={status} />
                   <span className="mono">{n}</span>
                 </div>
-              )) : <Empty mark="🗓" title="Nada marcado para hoje" />}
+              )) : <Empty mark={<Icone nome="agenda" size={26} />} title="Nada marcado para hoje" />}
             </div>
           </div>
         </div>
