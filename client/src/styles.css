@@ -84,6 +84,40 @@
   --radius-sm:  7px;
   --shadow:     0 10px 30px -12px rgba(0,0,0,.7);
 
+  /* ---- espaço: escala base 4 ----
+     Antes cada componente escolhia o próprio número (13px aqui, 15px ali, 9px
+     acolá) e nada alinhava com nada. Todo padding/gap/margem estrutural sai
+     daqui; número solto no meio do arquivo é bug, não escolha. */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
+  /* ---- tipografia: 8 degraus, cada um com um papel ----
+     Eram 18 tamanhos, vários separados por meio pixel — isso é ruído, não
+     hierarquia. Diferença que o olho não percebe não organiza nada. */
+  --fs-nano:  10px;   /* só o rótulo mais fino: sub-marca, papel do usuário */
+  --fs-micro: 11px;   /* rótulo em caixa alta, legenda */
+  --fs-xs:    12px;   /* metadado, texto terciário */
+  --fs-sm:    13px;   /* texto secundário, tabela, botão */
+  --fs-base:  14px;   /* corpo, campo de formulário */
+  --fs-md:    16px;   /* título de card, marca */
+  --fs-lg:    20px;   /* número de destaque, hora na agenda */
+  --fs-xl:    26px;   /* total da comanda, KPI */
+  --fs-2xl:   34px;   /* h1 da página, login */
+
+  --lh-tight: 1.15;   /* títulos */
+  --lh-base:  1.5;    /* texto corrido */
+
+  /* ---- movimento: uma duração e uma curva ----
+     Estavam espalhados .06s/.1s/.12s/.2s sem critério. */
+  --t-rapido: .12s;
+  --ease: cubic-bezier(.4, 0, .2, 1);
+
   /* ---- tipografia ----
      --display: serifada clássica, SÓ em títulos (h1/h2/h3, marca, login).
      --label:   rótulos em caixa alta e números de destaque (KPI, horário, total)
@@ -100,6 +134,8 @@ html, body, #root { height: 100%; }
 body {
   margin: 0;
   font-family: var(--sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
   color: var(--cream);
   background: var(--ink);
   background-image:
@@ -109,115 +145,197 @@ body {
 }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+/* O raio fixo de 4px daqui brigava com as pílulas de 999px e os cards de 10px:
+   o anel de foco saía quadrado em volta de coisa redonda. Sem forçar raio, ele
+   acompanha a forma de cada elemento. */
+:focus-visible { outline: 2px solid var(--accent-glow); outline-offset: 2px; }
 ::selection { background: var(--accent-a30); }
 
 /* ---------- tipografia utilitária ---------- */
+/* --accent-dim sobre o petróleo dá 2,4:1 — reprova em AA (mínimo 4,5) num texto
+   de 11px que aparece no topo de TODA página. A variante de texto do laranja,
+   que já existia pra isso, dá 5,9:1. */
 .eyebrow {
   font-family: var(--label); font-weight: 600; letter-spacing: .22em;
-  text-transform: uppercase; font-size: 11px; color: var(--accent-dim);
+  text-transform: uppercase; font-size: var(--fs-micro); color: var(--accent-text);
 }
-h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: 0; margin: 0; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: 0; margin: 0; line-height: var(--lh-tight); }
 .money { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 
 /* ============================================================================
    Login
    ========================================================================== */
+/* O fundo era uma hachura de 45° quase invisível — o padrão genérico que qualquer
+   tela de login recebe. Aqui ele é a MESMA hélice do poste da barra lateral, em
+   dose baixíssima: a marca aparece nas duas pontas do sistema, e não um enfeite
+   em cada uma. */
 .login {
-  min-height: 100%; display: grid; place-items: center; padding: 24px;
-  background-image:
-    repeating-linear-gradient(45deg, transparent 0 22px, var(--accent-a02) 22px 44px);
+  min-height: 100%; display: grid; place-items: center; padding: var(--sp-6);
+  background-image: repeating-linear-gradient(
+    118deg,
+    transparent 0 26px,
+    var(--accent-a02) 26px 40px,
+    transparent 40px 54px,
+    rgba(255,255,255,.012) 54px 68px
+  );
 }
 .login__card {
   width: 100%; max-width: 380px; background: var(--ink-2);
-  border: 1px solid var(--line); border-radius: 16px; padding: 40px 32px;
+  border: 1px solid var(--line); border-radius: 16px;
+  padding: var(--sp-8) var(--sp-7);
   box-shadow: var(--shadow);
+  position: relative; overflow: hidden;
+}
+/* A hélice atravessa o topo do cartão: assina a entrada sem pedir espaço. */
+.login__card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: repeating-linear-gradient(
+    118deg,
+    var(--accent) 0 10px, var(--oxblood) 10px 20px,
+    var(--cream) 20px 30px, var(--blue) 30px 40px
+  );
+  opacity: .75;
 }
 /* selo da marca no login: tesoura em laranja, anel sutil */
 .login__logo {
-  width: 76px; height: 76px; border-radius: 50%; margin: 0 auto 16px;
+  width: 76px; height: 76px; border-radius: 50%; margin: 0 auto var(--sp-4);
   display: grid; place-items: center; color: var(--accent);
   border: 1px solid var(--accent-dim); background: var(--accent-a06);
   box-shadow: 0 0 0 5px var(--accent-a06);
 }
-.login h1 { text-align: center; font-size: 30px; letter-spacing: .01em; }
-.login__sub { text-align: center; color: var(--muted); font-size: 13px; margin: 6px 0 26px; }
+.login h1 { text-align: center; font-size: var(--fs-2xl); letter-spacing: .01em; }
+.login__sub { text-align: center; color: var(--muted); font-size: var(--fs-sm); margin: var(--sp-2) 0 var(--sp-6); }
 
 /* ============================================================================
    Layout: barra lateral + conteúdo
    ========================================================================== */
 .shell { display: grid; grid-template-columns: 236px 1fr; min-height: 100%; }
+/* Mesma armadilha do min-width: auto — sem isto a coluna do conteúdo estica pra
+   caber a tabela mais larga e a página inteira vaza pro lado no celular. */
+.shell > * { min-width: 0; }
 .sidebar {
   position: relative; background: var(--ink-2); border-right: 1px solid var(--line);
-  padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
+  padding: var(--sp-5) var(--sp-3); display: flex; flex-direction: column; gap: 2px;
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
 }
-/* assinatura: poste de barbeiro na borda esquerda */
+/* Assinatura da casa: o poste de barbeiro na borda esquerda.
+   Era listra HORIZONTAL, que é exatamente o que um poste não tem — a hélice é o
+   que faz um poste ser um poste. Agora é diagonal de verdade, um pouco mais
+   larga e mais presente. Estático de propósito: um poste girando o dia inteiro
+   atrás de quem está trabalhando é irritação, não charme. */
 .sidebar::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-  background: repeating-linear-gradient(180deg, var(--oxblood) 0 14px, var(--cream) 14px 28px, var(--blue) 28px 42px);
-  opacity: .55;
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  background: repeating-linear-gradient(
+    118deg,
+    var(--oxblood) 0 9px,
+    var(--cream)   9px 18px,
+    var(--blue)    18px 27px,
+    var(--cream)   27px 36px
+  );
+  opacity: .7;
 }
-.brand { display: flex; align-items: center; gap: 11px; padding: 6px 8px 18px; }
+.brand { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-2) var(--sp-5); }
 .brand__mark {
   width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
   color: var(--accent); border: 1px solid var(--accent-dim); background: var(--accent-a06);
 }
-.brand__name { font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: .01em; line-height: 1.15; }
+.brand__name { font-family: var(--display); font-weight: 600; font-size: var(--fs-md); letter-spacing: .01em; line-height: var(--lh-tight); }
 .brand__name small {
-  display: block; font-family: var(--label); font-size: 9.5px; letter-spacing: .2em;
-  text-transform: uppercase; color: var(--faint); font-weight: 500; margin-top: 2px;
+  display: block; font-family: var(--label); font-size: var(--fs-nano); letter-spacing: .2em;
+  text-transform: uppercase; color: var(--faint); font-weight: 500; margin-top: 3px;
 }
 
-.nav-group { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); padding: 14px 10px 6px; font-family: var(--label); }
+.nav-group { font-size: var(--fs-micro); letter-spacing: .18em; text-transform: uppercase; color: var(--faint); padding: var(--sp-5) var(--sp-3) var(--sp-2); font-family: var(--label); }
 .nav-link {
-  display: flex; align-items: center; gap: 11px; padding: 9px 11px; border-radius: var(--radius-sm);
-  color: var(--muted); font-size: 13.5px; font-weight: 500; transition: background .12s, color .12s;
+  display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm); position: relative;
+  color: var(--muted); font-size: var(--fs-sm); font-weight: 500;
+  transition: background var(--t-rapido) var(--ease), color var(--t-rapido) var(--ease);
 }
 .nav-link:hover { background: var(--ink-3); color: var(--cream); }
 .nav-link.active { background: var(--accent-a14); color: var(--accent-text); }
-.nav-link .ic { width: 17px; text-align: center; opacity: .9; font-size: 15px; }
+/* A página atual ganha um traço na borda, alinhado com o poste: o item ativo
+   deixa de ser só "um retângulo mais claro". */
+.nav-link.active::before {
+  content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px;
+  border-radius: 2px; background: var(--accent);
+}
+.nav-link .ic { width: 18px; text-align: center; opacity: .9; font-size: var(--fs-md); }
 
-.sidebar__foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-soft); }
-.user-chip { display: flex; align-items: center; gap: 10px; padding: 8px; }
+.sidebar__foot { margin-top: auto; padding-top: var(--sp-3); border-top: 1px solid var(--line-soft); }
+.user-chip { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2); }
 .avatar {
   width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none;
   background: var(--ink-3); border: 1px solid var(--line); color: var(--accent-text);
-  font-family: var(--label); font-weight: 600; font-size: 12px;
+  font-family: var(--label); font-weight: 600; font-size: var(--fs-xs);
 }
-.user-chip__name { font-size: 12.5px; font-weight: 600; line-height: 1.2; }
-.user-chip__role { font-size: 10.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+.user-chip__name { font-size: var(--fs-sm); font-weight: 600; line-height: var(--lh-tight); }
+.user-chip__role { font-size: var(--fs-nano); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; font-family: var(--label); }
 
 /* conteúdo */
-.main { padding: 26px 30px 60px; max-width: 1220px; width: 100%; }
-.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
-.page-head h1 { font-size: 29px; letter-spacing: .01em; }
-.page-head p { color: var(--muted); margin: 5px 0 0; font-size: 13.5px; }
+/* min-width: 0 pelo mesmo motivo dos itens de .grid: o <main> é item do .shell e,
+   sem isso, a coluna inteira estica pra caber a tabela mais larga da tela — no
+   celular a página saía 33px mais larga que o aparelho. */
+.main { padding: var(--sp-7) var(--sp-7) var(--sp-8); max-width: 1220px; width: 100%; min-width: 0; }
+/* O título encosta na régua de cima; a descrição respira embaixo. O que separava
+   as duas era 5px — perto demais pra ler como duas informações diferentes. */
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-4); margin-bottom: var(--sp-6); flex-wrap: wrap; }
+.page-head h1 { font-size: var(--fs-2xl); letter-spacing: .01em; margin-top: var(--sp-1); }
+.page-head p { color: var(--muted); margin: var(--sp-2) 0 0; font-size: var(--fs-sm); max-width: 62ch; }
 
 /* ============================================================================
    Componentes
    ========================================================================== */
 .card { background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius); }
-.card__head { padding: 15px 18px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.card__head h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; }
-.card__body { padding: 18px; }
-.grid { display: grid; gap: 16px; }
-.stack { display: flex; flex-direction: column; gap: 14px; }
-.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.spread { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.card__head {
+  padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line-soft);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+}
+/* Título de card sai da Playfair.
+   Serifada de alto contraste em CAIXA ALTA a 15px é o pior uso possível dela: os
+   contrastes finos somem e sobra um rótulo genérico de dashboard. A Playfair fica
+   onde ela é boa — h1 da página, marca, login, dos 26px pra cima. Aqui entra a
+   Oswald, condensada, que o sistema já carrega: é a letra do QUADRO DE PREÇOS de
+   barbearia, o vernáculo do assunto. */
+.card__head h2 {
+  font-family: var(--label); font-weight: 600; font-size: var(--fs-sm);
+  text-transform: uppercase; letter-spacing: .14em; color: var(--cream);
+}
+.card__body { padding: var(--sp-5); }
+.grid { display: grid; gap: var(--sp-4); }
+/* Item de grade tem min-width: auto por padrão, ou seja: se recusa a ficar menor
+   que o próprio conteúdo. Era por isso que um cartão com tabela larga esticava a
+   coluna e empurrava a página, em vez de deixar a tabela rolar por dentro. */
+.grid > * { min-width: 0; }
+/* Modificadores de duas colunas.
+   O template vivia INLINE em cada tela (1.2fr/1.3fr/1.4fr, seis proporções pra três
+   intenções) e estilo inline vence media query: no celular a grade continuava em
+   duas colunas e a página vazava 140px pro lado. Aqui viram classe, colapsam em uma
+   coluna junto com o resto do layout, e as proporções quase-iguais viram uma só. */
+.grid--2         { grid-template-columns: 1fr 1fr; }
+.grid--principal { grid-template-columns: 1.4fr 1fr; }   /* coluna principal + apoio */
+.grid--apoio     { grid-template-columns: 1fr 1.4fr; }   /* apoio + coluna principal */
+.grid--lateral   { grid-template-columns: 1fr 320px; }   /* conteúdo + painel fixo */
+.stack { display: flex; flex-direction: column; gap: var(--sp-4); }
+.row { display: flex; gap: var(--sp-3); align-items: center; flex-wrap: wrap; }
+.spread { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 
 /* botões */
 .btn {
   display: inline-flex; align-items: center; gap: 8px; justify-content: center;
-  padding: 9px 15px; border-radius: var(--radius-sm); border: 1px solid var(--line);
-  background: var(--ink-3); color: var(--cream); font-size: 13px; font-weight: 600;
-  cursor: pointer; transition: transform .06s, background .12s, border-color .12s;
+  padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line);
+  background: var(--ink-3); color: var(--cream); font-size: var(--fs-sm); font-weight: 600;
+  line-height: 1.2; cursor: pointer;
+  transition: background var(--t-rapido) var(--ease), border-color var(--t-rapido) var(--ease), color var(--t-rapido) var(--ease);
 }
 .btn:hover { background: var(--btn-hover); border-color: var(--accent-dim); }
-.btn:active { transform: translateY(1px); }
+.btn:active { background: var(--ink-3); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn--primary { background: linear-gradient(150deg, var(--accent), var(--accent-dim)); border-color: var(--accent-dim); color: var(--on-accent); }
-.btn--primary:hover { filter: brightness(1.06); background: linear-gradient(150deg, var(--accent-glow), var(--accent)); }
+/* Laranja chapado no lugar do gradiente: gradiente em botão é tique de template,
+   e o laranja da casa não precisa de ajuda pra chamar atenção. O hover clareia
+   pro tom de brilho que já existe na paleta. */
+.btn--primary { background: var(--accent); border-color: var(--accent-dim); color: var(--on-accent); }
+.btn--primary:hover { background: var(--accent-glow); border-color: var(--accent-glow); }
 .btn--danger { color: var(--danger-fg); border-color: var(--danger-line); background: var(--danger-bg); }
 .btn--danger:hover { background: var(--danger-bg-hover); border-color: var(--oxblood); }
 /* WhatsApp: verde do TEMA (o teal de estado positivo), não o verde da marca —
@@ -226,34 +344,58 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: 0; m
 .btn--zap:hover { border-color: var(--green-text); background: var(--green-a16); filter: brightness(1.12); }
 .btn--ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn--ghost:hover { background: var(--ink-3); color: var(--cream); }
-.btn--sm { padding: 6px 10px; font-size: 12px; }
+.btn--sm { padding: 6px var(--sp-3); font-size: var(--fs-xs); }
 .btn--block { width: 100%; }
 
 /* campos */
-label.field { display: block; margin-bottom: 13px; }
-.field > span { display: block; font-size: 11.5px; color: var(--muted); margin-bottom: 5px; font-weight: 600; letter-spacing: .02em; }
-.input, .select, textarea.input {
-  width: 100%; padding: 10px 12px; border-radius: var(--radius-sm);
-  background: var(--ink); border: 1px solid var(--line); color: var(--cream);
-  font-size: 14px; font-family: inherit; transition: border-color .12s, background .12s;
+label.field { display: block; margin-bottom: var(--sp-4); }
+.field > span {
+  display: block; font-family: var(--label); font-size: var(--fs-micro); color: var(--muted);
+  margin-bottom: var(--sp-2); font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
 }
+.input, .select, textarea.input {
+  width: 100%; padding: 10px var(--sp-3); border-radius: var(--radius-sm);
+  background: var(--ink); border: 1px solid var(--line); color: var(--cream);
+  font-size: var(--fs-base); font-family: inherit; line-height: 1.4;
+  transition: border-color var(--t-rapido) var(--ease), background var(--t-rapido) var(--ease);
+}
+.input:hover, .select:hover { border-color: var(--line); background: var(--input-focus-bg); }
 .input:focus, .select:focus, textarea.input:focus { border-color: var(--accent); background: var(--input-focus-bg); outline: none; }
 .input::placeholder { color: var(--faint); }
 .select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--accent) 50%), linear-gradient(135deg, var(--accent) 50%, transparent 50%); background-position: right 14px center, right 9px center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
 
 /* tabela */
-.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.table th { text-align: left; font-family: var(--label); font-weight: 500; letter-spacing: .1em; text-transform: uppercase; font-size: 10.5px; color: var(--faint); padding: 10px 14px; border-bottom: 1px solid var(--line); }
-.table td { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+/* Alinhamento da tabela com o cartão.
+   O sistema tem DOIS jeitos de pôr tabela: solta dentro do .card (as listas de
+   cadastro, que sangram de ponta a ponta) e dentro de um .card__body/.modal__body
+   que já tem recuo. Antes a célula usava 14px fixos nos dois casos, e a primeira
+   coluna nunca batia com o título do cartão (18px). Agora a ponta se ajusta ao
+   contêiner: nos dois casos o texto começa exatamente embaixo do título. */
+.table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.table th {
+  text-align: left; font-family: var(--label); font-weight: 500; letter-spacing: .12em;
+  text-transform: uppercase; font-size: var(--fs-micro); color: var(--faint);
+  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line);
+}
+.table td { padding: var(--sp-3); border-bottom: 1px solid var(--line-soft); }
+/* solta no cartão: a ponta recebe o recuo do próprio cartão */
+.card > .table th:first-child, .card > .table td:first-child { padding-left: var(--sp-5); }
+.card > .table th:last-child,  .card > .table td:last-child  { padding-right: var(--sp-5); }
+/* dentro de um corpo já recuado: a ponta fica rente, sem somar recuo em cima de recuo */
+.card__body > .table th:first-child, .card__body > .table td:first-child,
+.modal__body > .table th:first-child, .modal__body > .table td:first-child { padding-left: 0; }
+.card__body > .table th:last-child, .card__body > .table td:last-child,
+.modal__body > .table th:last-child, .modal__body > .table td:last-child { padding-right: 0; }
 .table tr:last-child td { border-bottom: none; }
-.table tbody tr { transition: background .1s; }
+.table tbody tr { transition: background var(--t-rapido) var(--ease); }
 .table tbody tr:hover { background: var(--accent-a05); }
 .table .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 /* badges */
 .badge {
-  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px;
-  font-size: 11px; font-weight: 600; border: 1px solid var(--line); background: var(--ink-3); color: var(--muted);
+  display: inline-flex; align-items: center; gap: var(--sp-1); padding: 3px 10px; border-radius: 999px;
+  font-family: var(--label); font-size: var(--fs-micro); font-weight: 500; letter-spacing: .06em;
+  line-height: 1.5; border: 1px solid var(--line); background: var(--ink-3); color: var(--muted);
 }
 .badge--scheduled { color: var(--state-orange-fg); border-color: var(--state-orange-line); background: var(--state-orange-bg); }
 .badge--confirmed { color: var(--state-green-fg); border-color: var(--state-green-line); background: var(--state-green-bg); }
@@ -265,39 +407,42 @@ label.field { display: block; margin-bottom: 13px; }
 .badge--ouro { color: var(--accent-text); border-color: var(--accent-dim); background: var(--accent-a16); }
 .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
-/* KPI */
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
-.kpi { background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; position: relative; overflow: hidden; }
-.kpi::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--accent); opacity: .5; }
-.kpi__label { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--faint); font-family: var(--label); font-weight: 600; }
-.kpi__value { font-family: var(--label); font-weight: 600; font-size: 30px; margin-top: 8px; letter-spacing: -.01em; }
-.kpi__value.money { font-family: var(--mono); font-size: 24px; font-weight: 600; }
-.kpi__foot { font-size: 12px; color: var(--muted); margin-top: 4px; }
+/* KPI
+   A barra laranja de 3px se repetia idêntica nos quatro cartões: quatro vezes o
+   mesmo enfeite não hierarquiza nada — só some de vista. Saiu, e quem passou a
+   carregar o cartão é o número, que é o que a pessoa veio ler. */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-4); }
+.kpi { background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-4) var(--sp-5) var(--sp-5); }
+.kpi__label { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .16em; color: var(--faint); font-family: var(--label); font-weight: 500; }
+.kpi__value { font-family: var(--label); font-weight: 600; font-size: var(--fs-2xl); line-height: 1.05; margin-top: var(--sp-3); letter-spacing: -.01em; }
+.kpi__value.money { font-family: var(--mono); font-size: var(--fs-xl); font-weight: 600; letter-spacing: -.02em; }
+.kpi__foot { font-size: var(--fs-xs); color: var(--muted); margin-top: var(--sp-2); }
 
 /* estado vazio */
-.empty { text-align: center; padding: 40px 20px; color: var(--muted); }
-.empty__mark { font-size: 30px; margin-bottom: 10px; opacity: .5; }
-.empty p { margin: 0 0 4px; }
-.empty small { color: var(--faint); }
+.empty { text-align: center; padding: var(--sp-8) var(--sp-5); color: var(--muted); }
+.empty__mark { font-size: var(--fs-xl); margin-bottom: var(--sp-3); opacity: .45; line-height: 1; }
+.empty p { margin: 0 0 var(--sp-1); font-size: var(--fs-base); color: var(--cream); }
+.empty small { color: var(--faint); font-size: var(--fs-sm); }
 
 /* toast */
-.toast-wrap { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 100; }
-.toast { padding: 12px 16px; border-radius: var(--radius-sm); background: var(--ink-3); border: 1px solid var(--line); color: var(--cream); font-size: 13.5px; box-shadow: var(--shadow); max-width: 340px; animation: toastin .2s ease; }
+.toast-wrap { position: fixed; right: var(--sp-5); bottom: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); z-index: 100; }
+.toast { padding: var(--sp-3) var(--sp-4); border-radius: var(--radius-sm); background: var(--ink-3); border: 1px solid var(--line); color: var(--cream); font-size: var(--fs-sm); box-shadow: var(--shadow); max-width: 340px; animation: toastin .2s var(--ease); }
 .toast--ok { border-color: var(--state-green-line); }
 .toast--erro { border-color: var(--oxblood); }
 @keyframes toastin { from { opacity: 0; transform: translateY(8px); } }
 
 /* modal */
-.overlay { position: fixed; inset: 0; background: var(--overlay-bg); display: grid; place-items: center; padding: 20px; z-index: 90; animation: fade .12s; }
+.overlay { position: fixed; inset: 0; background: var(--overlay-bg); display: grid; place-items: center; padding: var(--sp-5); z-index: 90; animation: fade var(--t-rapido) var(--ease); }
 @keyframes fade { from { opacity: 0; } }
 .modal { width: 100%; max-width: 480px; background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); max-height: 90vh; display: flex; flex-direction: column; }
 .modal--wide { max-width: 760px; }
-.modal__head { padding: 18px 20px; border-bottom: 1px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; }
-.modal__head h2 { font-size: 17px; text-transform: uppercase; letter-spacing: .06em; }
-.modal__body { padding: 20px; overflow-y: auto; }
-.modal__foot { padding: 16px 20px; border-top: 1px solid var(--line-soft); display: flex; justify-content: flex-end; gap: 10px; }
+.modal__head { padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); }
+/* Mesma regra do título de card: rótulo em Oswald, não Playfair em caixa alta. */
+.modal__head h2 { font-family: var(--label); font-weight: 600; font-size: var(--fs-base); text-transform: uppercase; letter-spacing: .12em; }
+.modal__body { padding: var(--sp-5); overflow-y: auto; }
+.modal__foot { padding: var(--sp-4) var(--sp-5); border-top: 1px solid var(--line-soft); display: flex; justify-content: flex-end; gap: var(--sp-3); }
 
-.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-4); }
 .spinner { width: 30px; height: 30px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 40px auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
 /* Spinner de dentro de campo (busca de cliente): o de cima tem margem de 40px. */
@@ -308,23 +453,36 @@ label.field { display: block; margin-bottom: 13px; }
 .busca__carregando { position: absolute; right: 11px; top: 50%; margin-top: -8px; pointer-events: none; }
 .busca__painel { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 26px rgba(0,0,0,.35); overflow: hidden; }
 .busca__lista { list-style: none; margin: 0; padding: 4px; max-height: 260px; overflow-y: auto; }
-.busca__item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border-radius: 7px; cursor: pointer; font-size: 13.5px; }
+.busca__item {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-sm); cursor: pointer;
+  font-size: var(--fs-sm); transition: background var(--t-rapido) var(--ease), color var(--t-rapido) var(--ease);
+}
+.busca__item:hover { background: var(--ink-3); }
 .busca__item.destacado { background: var(--accent-a14); color: var(--accent-text); }
 .busca__item-nome { font-weight: 600; }
-.busca__mais { padding: 8px 11px; font-size: 11px; color: var(--faint); border-top: 1px solid var(--line-soft); }
-.busca__vazio { padding: 14px 12px; font-size: 13px; color: var(--muted); text-align: center; }
-.busca__sel { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 9px 8px 12px; border: 1px solid var(--accent-dim); border-radius: var(--radius); background: var(--accent-a06); }
-.busca__sel-nome { font-size: 13.5px; font-weight: 600; }
+.busca__mais { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-micro); color: var(--faint); border-top: 1px solid var(--line-soft); }
+.busca__vazio { padding: var(--sp-4) var(--sp-3); font-size: var(--fs-sm); color: var(--muted); text-align: center; }
+.busca__sel { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3); border: 1px solid var(--accent-dim); border-radius: var(--radius-sm); background: var(--accent-a06); }
+.busca__sel-nome { font-size: var(--fs-base); font-weight: 600; }
 
 /* ---------- agenda ---------- */
-.agenda-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
-.slot { display: flex; gap: 14px; padding: 13px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--ink-2); margin-bottom: 9px; align-items: center; transition: border-color .12s; }
-.slot:hover { border-color: var(--accent-dim); }
-.slot__time { font-family: var(--label); font-weight: 600; font-size: 18px; width: 58px; flex: none; letter-spacing: .02em; }
+.agenda-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-5); }
+/* Uma linguagem só de estado: superfície clicável muda a borda pro laranja e sobe
+   um degrau de fundo. Antes cada lista respondia de um jeito (uma levantava, outra
+   trocava borda, outra pintava o fundo) e três respostas diferentes pra mesma
+   pergunta — "dá pra clicar?" — não ensinam nada. */
+.slot {
+  display: flex; gap: var(--sp-4); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--ink-2); margin-bottom: var(--sp-2); align-items: center;
+  transition: border-color var(--t-rapido) var(--ease), background var(--t-rapido) var(--ease);
+}
+.slot:hover { border-color: var(--accent-dim); background: var(--ink-3); }
+.slot__time { font-family: var(--label); font-weight: 600; font-size: var(--fs-lg); width: 58px; flex: none; letter-spacing: .02em; line-height: 1.1; }
 .slot__bar { width: 3px; align-self: stretch; border-radius: 3px; flex: none; }
 .slot__main { flex: 1; min-width: 0; }
-.slot__client { font-weight: 600; font-size: 14.5px; }
-.slot__meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.slot__client { font-weight: 600; font-size: var(--fs-base); }
+.slot__meta { color: var(--muted); font-size: var(--fs-xs); margin-top: 2px; }
 
 /* horário bloqueado: listra em madeira sobre o petróleo — lê como "fechado"
    e não compete com o laranja de ação nem com o teal de disponível */
@@ -337,82 +495,103 @@ label.field { display: block; margin-bottom: 13px; }
 .slot--block .slot__client { color: var(--muted); }
 .slot--block .slot__meta { color: var(--faint); }
 
-.mini-cal { border: 1px solid var(--line); border-radius: var(--radius); background: var(--ink); padding: 12px; margin-bottom: 14px; }
-.mini-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.mini-cal__title { font-size: 13px; font-weight: 600; }
-.mini-cal__legend { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.mini-cal { border: 1px solid var(--line); border-radius: var(--radius); background: var(--ink); padding: var(--sp-3); margin-bottom: var(--sp-4); }
+.mini-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-3); }
+.mini-cal__title { font-family: var(--label); font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: .1em; }
+.mini-cal__legend { display: flex; gap: var(--sp-3); font-size: var(--fs-micro); color: var(--muted); margin-bottom: var(--sp-2); }
 .mini-cal__legend span { display: inline-flex; align-items: center; gap: 5px; }
 .mini-cal__dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .mini-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.mini-cal__weekday { text-align: center; font-size: 10.5px; color: var(--muted); font-weight: 600; padding-bottom: 2px; }
+.mini-cal__weekday { text-align: center; font-family: var(--label); font-size: var(--fs-nano); color: var(--faint); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; padding-bottom: var(--sp-1); }
 .mini-cal__day {
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  border-radius: var(--radius-sm); font-size: 12.5px; border: 1px solid transparent;
-  background: var(--ink-3); color: var(--cream); cursor: pointer; transition: border-color .12s, transform .06s;
+  border-radius: var(--radius-sm); font-size: var(--fs-sm); border: 1px solid transparent;
+  background: var(--ink-3); color: var(--cream); cursor: pointer;
+  transition: border-color var(--t-rapido) var(--ease), background var(--t-rapido) var(--ease);
 }
-.mini-cal__day:hover { border-color: var(--accent-dim); transform: translateY(-1px); }
+.mini-cal__day:hover { border-color: var(--accent-dim); }
 .mini-cal__day--blank { visibility: hidden; cursor: default; }
 .mini-cal__day--past { background: transparent; color: var(--muted); opacity: .4; cursor: not-allowed; }
-.mini-cal__day--past:hover { border-color: transparent; transform: none; }
+.mini-cal__day--past:hover { border-color: transparent; }
 .mini-cal__day--livre { background: var(--green-a16); color: var(--green-text); }
 .mini-cal__day--cheio { background: var(--oxblood-a16); color: var(--state-red-fg); }
 .mini-cal__day--selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-a25); font-weight: 700; }
 
-.slot-pick { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 13px; }
-.slot-pick__btn { padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink-2); color: var(--cream); font-size: 12.5px; cursor: pointer; }
-.slot-pick__btn:hover { border-color: var(--accent-dim); }
+.slot-pick { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0 var(--sp-4); }
+.slot-pick__btn {
+  padding: 6px var(--sp-3); border-radius: 999px; border: 1px solid var(--line);
+  background: var(--ink-2); color: var(--cream); font-family: var(--mono); font-size: var(--fs-xs); cursor: pointer;
+  transition: border-color var(--t-rapido) var(--ease), background var(--t-rapido) var(--ease);
+}
+.slot-pick__btn:hover { border-color: var(--accent-dim); background: var(--ink-3); }
 .slot-pick__btn.active { background: var(--accent-a14); color: var(--accent-text); border-color: var(--accent-dim); }
-.slot-pick__empty { color: var(--muted); font-size: 12.5px; padding: 4px 0 13px; }
+.slot-pick__empty { color: var(--muted); font-size: var(--fs-sm); padding: var(--sp-1) 0 var(--sp-4); }
 
 /* ---------- comanda / PDV ---------- */
-.pdv { display: grid; grid-template-columns: 1fr 360px; gap: 18px; align-items: start; }
-.catalog-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.pdv { display: grid; grid-template-columns: 1fr 360px; gap: var(--sp-5); align-items: start; }
+.catalog-tabs { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-4); flex-wrap: wrap; align-items: center; }
 
 /* "O de sempre": sugestão do serviço habitual do cliente. Discreta de propósito —
    uma linha acima das abas, sem peso de card, para não competir com o catálogo. */
 .usual {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-  padding: 9px 12px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-sm);
   border: 1px dashed var(--accent-dim); background: var(--accent-a06);
 }
-.usual__mark { font-size: 14px; line-height: 1; flex: none; }
-.usual__text { flex: 1; min-width: 0; font-size: 13px; }
-.chip-tab { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink-2); color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.usual__mark { font-size: var(--fs-base); line-height: 1; flex: none; }
+.usual__text { flex: 1; min-width: 0; font-size: var(--fs-sm); }
+/* A aba não tinha estado de hover nenhum: era um alvo que não respondia. */
+.chip-tab {
+  padding: 7px var(--sp-4); border-radius: 999px; border: 1px solid var(--line);
+  background: var(--ink-2); color: var(--muted); font-family: var(--label);
+  font-size: var(--fs-sm); font-weight: 500; letter-spacing: .06em; cursor: pointer;
+  transition: background var(--t-rapido) var(--ease), border-color var(--t-rapido) var(--ease), color var(--t-rapido) var(--ease);
+}
+.chip-tab:hover { background: var(--ink-3); color: var(--cream); border-color: var(--accent-dim); }
 .chip-tab.active { background: var(--accent-a14); color: var(--accent-text); border-color: var(--accent-dim); }
-.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.cat-item { text-align: left; padding: 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--ink-2); cursor: pointer; transition: border-color .12s, transform .06s; }
-.cat-item:hover { border-color: var(--accent-dim); transform: translateY(-1px); }
-.cat-item:active { transform: translateY(0); }
-.cat-item__name { font-weight: 600; font-size: 13.5px; }
-.cat-item__price { font-family: var(--mono); color: var(--accent-text); font-size: 13px; margin-top: 6px; }
-.cat-item__sub { font-size: 11px; color: var(--faint); margin-top: 2px; }
-.comanda { position: sticky; top: 20px; }
-.comanda__item { display: flex; gap: 8px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
-.comanda__item .x { color: var(--faint); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 4px; }
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-3); }
+.cat-item {
+  text-align: left; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--ink-2); cursor: pointer;
+  transition: border-color var(--t-rapido) var(--ease), background var(--t-rapido) var(--ease);
+}
+.cat-item:hover { border-color: var(--accent-dim); background: var(--ink-3); }
+.cat-item__name { font-weight: 600; font-size: var(--fs-base); line-height: 1.3; }
+.cat-item__price { font-family: var(--mono); color: var(--accent-text); font-size: var(--fs-sm); margin-top: var(--sp-2); }
+.cat-item__sub { font-size: var(--fs-micro); color: var(--faint); margin-top: 3px; }
+.comanda { position: sticky; top: var(--sp-5); }
+.comanda__item { display: flex; gap: var(--sp-2); align-items: flex-start; padding: var(--sp-3) 0; border-bottom: 1px solid var(--line-soft); }
+.comanda__item .x { color: var(--faint); cursor: pointer; font-size: var(--fs-md); line-height: 1; padding: 2px var(--sp-1); transition: color var(--t-rapido) var(--ease); }
 .comanda__item .x:hover { color: var(--oxblood-text); }
-.comanda__totline { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13.5px; }
+.comanda__totline { display: flex; justify-content: space-between; padding: var(--sp-2) 0; font-size: var(--fs-sm); }
 .comanda__totline strong { font-family: var(--mono); }
-.comanda__grand { font-family: var(--label); font-size: 24px; font-weight: 600; }
-.pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 14px; }
-.pay-opt { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--ink); text-align: center; cursor: pointer; font-weight: 600; font-size: 13px; }
+/* O total é o número que fecha a venda: é o maior tipo da coluna, e o único. */
+.comanda__grand { font-family: var(--mono); font-size: var(--fs-xl); font-weight: 600; letter-spacing: -.02em; }
+.pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin: var(--sp-3) 0 var(--sp-4); }
+.pay-opt {
+  padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--ink); text-align: center; cursor: pointer; font-weight: 600; font-size: var(--fs-sm);
+  transition: border-color var(--t-rapido) var(--ease), background var(--t-rapido) var(--ease), color var(--t-rapido) var(--ease);
+}
+.pay-opt:hover { border-color: var(--accent-dim); background: var(--ink-3); }
 .pay-opt.active { border-color: var(--accent); background: var(--accent-a12); color: var(--accent-text); }
 
 /* Prévia da mensagem de WhatsApp: o atendente lê antes de abrir a conversa. */
 .zap-msg {
-  padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--line-soft);
-  background: var(--ink); color: var(--cream); font-size: 13px; line-height: 1.5;
+  padding: var(--sp-3); border-radius: var(--radius-sm); border: 1px solid var(--line-soft);
+  background: var(--ink); color: var(--cream); font-size: var(--fs-sm); line-height: var(--lh-base);
 }
 
 /* ---------- fila de espera ---------- */
 /* Lista de quem espera + painel de "chamar próximo" ao lado (vira uma coluna só
    no celular, igual ao PDV). */
-.fila { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+.fila { display: grid; grid-template-columns: 1fr 320px; gap: var(--sp-5); align-items: start; }
 
 /* barra de comissão */
-.bar-track { height: 8px; border-radius: 999px; background: var(--ink); overflow: hidden; border: 1px solid var(--line-soft); }
-.bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
+.bar-track { height: 6px; border-radius: 999px; background: var(--ink); overflow: hidden; border: 1px solid var(--line-soft); }
+.bar-fill { height: 100%; background: var(--accent); opacity: .85; }
 
-.hr { height: 1px; background: var(--line-soft); border: 0; margin: 14px 0; }
+.hr { height: 1px; background: var(--line-soft); border: 0; margin: var(--sp-4) 0; }
 .muted { color: var(--muted); }
 .faint { color: var(--faint); }
 .right { text-align: right; }
@@ -422,13 +601,23 @@ label.field { display: block; margin-bottom: 13px; }
 /* responsivo */
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
-  .sidebar { position: fixed; z-index: 80; width: 236px; transform: translateX(-100%); transition: transform .2s; height: 100vh; }
+  .sidebar { position: fixed; z-index: 80; width: 236px; transform: translateX(-100%); transition: transform .2s var(--ease); height: 100vh; }
   .sidebar.open { transform: none; }
-  .main { padding: 18px 16px 60px; }
+  .main { padding: var(--sp-5) var(--sp-4) var(--sp-8); }
   .pdv { grid-template-columns: 1fr; }
   .fila { grid-template-columns: 1fr; }
+  .grid--2, .grid--principal, .grid--apoio, .grid--lateral { grid-template-columns: 1fr; }
+  /* Tabela larga (extrato de estoque, movimentações) rola DENTRO do cartão em vez
+     de empurrar a página inteira pro lado. O :has evita ligar o overflow em corpo
+     de cartão sem tabela, onde ele cortaria o dropdown da busca de cliente. */
+  .card__body:has(> .table), .card:has(> .table) { overflow-x: auto; }
+  /* A linha da agenda/fila é flex sem quebra: hora + cliente + botões de ação não
+     cabem em 375px e esticavam a página inteira. No celular ela quebra, e as ações
+     descem pra segunda linha em vez de sair pela direita. */
+  .slot { flex-wrap: wrap; }
+  .slot__main { flex: 1 1 60%; }
   .comanda { position: static; }
   .mobile-bar { display: flex !important; }
 }
-.mobile-bar { display: none; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--ink-2); position: sticky; top: 0; z-index: 70; }
+.mobile-bar { display: none; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); background: var(--ink-2); position: sticky; top: 0; z-index: 70; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

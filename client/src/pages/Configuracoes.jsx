@@ -25,7 +25,7 @@ export default function Configuracoes() {
       <div className="page-head">
         <div><div className="eyebrow">Gestão</div><h1>Configurações</h1><p>Dados da barbearia exibidos no sistema.</p></div>
       </div>
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', maxWidth: 820 }}>
+      <div className="grid grid--2" style={{ maxWidth: 820 }}>
         <div className="card">
           <div className="card__head"><h2>Identificação</h2></div>
           <div className="card__body">
@@ -78,7 +78,7 @@ export default function Configuracoes() {
                 onChange={() => setF({ ...f, commissionOnDiscount: 'cheio' })} />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <strong>Sobre o valor cheio</strong>
-                <span className="muted" style={{ display: 'block', fontSize: 12.5, lineHeight: 1.5 }}>
+                <span className="muted" style={{ display: 'block', fontSize: 12, lineHeight: 1.5 }}>
                   O profissional recebe a comissão do preço de tabela — o desconto sai todo da barbearia.
                 </span>
               </span>
@@ -89,7 +89,7 @@ export default function Configuracoes() {
                 onChange={() => setF({ ...f, commissionOnDiscount: 'liquido' })} />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <strong>Sobre o valor com desconto</strong>
-                <span className="muted" style={{ display: 'block', fontSize: 12.5, lineHeight: 1.5 }}>
+                <span className="muted" style={{ display: 'block', fontSize: 12, lineHeight: 1.5 }}>
                   O desconto da comanda é dividido entre os itens (proporcional ao valor de cada um) antes
                   de calcular a comissão — profissional e barbearia dividem o desconto.
                 </span>
@@ -105,7 +105,7 @@ export default function Configuracoes() {
         <div className="card" style={{ alignSelf: 'start' }}>
           <div className="card__head"><h2>Sobre este sistema</h2></div>
           <div className="card__body">
-            <p className="muted" style={{ marginTop: 0, fontSize: 13.5, lineHeight: 1.6 }}>
+            <p className="muted" style={{ marginTop: 0, fontSize: 13, lineHeight: 1.6 }}>
               Sistema de gestão para barbearia: agenda, comanda, caixa, comissões,
               estoque e fidelidade.
             </p>

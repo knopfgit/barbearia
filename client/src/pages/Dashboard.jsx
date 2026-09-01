@@ -23,7 +23,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="kpis" style={{ marginBottom: 22 }}>
+      <div className="kpis" style={{ marginBottom: 24 }}>
         <div className="kpi">
           <div className="kpi__label">Faturamento hoje</div>
           <div className="kpi__value money">{brl(d.revenueToday)}</div>
@@ -41,14 +41,14 @@ export default function Dashboard() {
         </div>
         <div className="kpi">
           <div className="kpi__label">Caixa</div>
-          <div className="kpi__value" style={{ fontSize: 22, color: d.cashOpen ? 'var(--green)' : 'var(--oxblood)' }}>
+          <div className="kpi__value" style={{ fontSize: 20, color: d.cashOpen ? 'var(--green)' : 'var(--oxblood)' }}>
             {d.cashOpen ? 'Aberto' : 'Fechado'}
           </div>
           <div className="kpi__foot"><Link to="/caixa" className="muted" style={{ textDecoration: 'underline' }}>gerenciar caixa</Link></div>
         </div>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+      <div className="grid grid--principal">
         <div className="card">
           <div className="card__head"><h2>Próximos horários</h2><Link to="/agenda" className="btn btn--ghost btn--sm">Agenda completa</Link></div>
           <div className="card__body" style={{ paddingTop: 8 }}>
@@ -74,8 +74,8 @@ export default function Dashboard() {
                 <div className="row" style={{ gap: 10 }}>
                   <span className="avatar" style={{ background: 'var(--ink-3)', color: b.color }}>{initials(b.name)}</span>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 13.5 }}>{b.name}</div>
-                    <div className="faint" style={{ fontSize: 11.5 }}>comissão {brl(b.commission)}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{b.name}</div>
+                    <div className="faint" style={{ fontSize: 11 }}>comissão {brl(b.commission)}</div>
                   </div>
                 </div>
                 <span className="money" style={{ color: 'var(--accent-text)' }}>{brl(b.revenue)}</span>

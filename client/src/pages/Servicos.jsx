@@ -99,8 +99,8 @@ function Consumables({ serviceId }) {
   }
 
   return (
-    <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line-soft)' }}>
-      <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.02em', marginBottom: 8 }}>
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--line-soft)' }}>
+      <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.02em', marginBottom: 8 }}>
         FICHA TÉCNICA — insumos consumidos por execução
       </div>
       {rows === null ? null : rows.length === 0 ? (
@@ -108,7 +108,7 @@ function Consumables({ serviceId }) {
       ) : (
         <div style={{ marginBottom: 10 }}>
           {rows.map((c) => (
-            <div key={c.id} className="spread" style={{ padding: '5px 0', fontSize: 13.5 }}>
+            <div key={c.id} className="spread" style={{ padding: '5px 0', fontSize: 13 }}>
               <span>{c.productName} <span className="muted">× {c.qty}</span></span>
               <button type="button" className="btn btn--ghost btn--sm" onClick={() => remove(c.id)}>Remover</button>
             </div>

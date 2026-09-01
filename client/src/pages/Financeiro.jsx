@@ -35,14 +35,14 @@ export default function Financeiro() {
             <div className="kpi"><div className="kpi__label">Comissões</div><div className="kpi__value money">{brl(d.totalCommission)}</div><div className="kpi__foot">a repassar aos profissionais</div></div>
           </div>
 
-          <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 16 }}>
+          <div className="grid grid--2" style={{ marginBottom: 16 }}>
             <div className="card">
               <div className="card__head"><h2>Comissão por profissional</h2></div>
               <div className="card__body">
                 {d.byBarber.length === 0 ? <Empty mark="♞" title="Sem produção no período" /> : d.byBarber.map((b) => (
-                  <div key={b.id} style={{ marginBottom: 14 }}>
+                  <div key={b.id} style={{ marginBottom: 16 }}>
                     <div className="spread" style={{ marginBottom: 6 }}>
-                      <div className="row" style={{ gap: 9 }}><span className="avatar" style={{ color: b.color }}>{initials(b.name)}</span><strong style={{ fontSize: 13.5 }}>{b.name}</strong></div>
+                      <div className="row" style={{ gap: 9 }}><span className="avatar" style={{ color: b.color }}>{initials(b.name)}</span><strong style={{ fontSize: 13 }}>{b.name}</strong></div>
                       <div className="right"><div className="money" style={{ color: 'var(--accent-text)' }}>{brl(b.commission)}</div><div className="faint" style={{ fontSize: 11 }}>de {brl(b.revenue)}</div></div>
                     </div>
                     <div className="bar-track"><div className="bar-fill" style={{ width: `${d.byBarber[0].revenue ? (b.revenue / d.byBarber[0].revenue) * 100 : 0}%` }} /></div>
@@ -64,7 +64,7 @@ export default function Financeiro() {
             </div>
           </div>
 
-          <div className="grid" style={{ gridTemplateColumns: '1.3fr 1fr' }}>
+          <div className="grid grid--principal">
             <div className="card">
               <div className="card__head"><h2>Faturamento por dia</h2></div>
               <div className="card__body">
@@ -73,7 +73,7 @@ export default function Financeiro() {
                     {d.byDay.map((x) => (
                       <div key={x.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 0 }} title={`${x.day}: ${brl(x.total)}`}>
                         <div style={{ width: '100%', height: maxDay ? `${Math.max(4, (x.total / maxDay) * 130)}px` : 4, background: 'linear-gradient(180deg, var(--accent), var(--accent-dim))', borderRadius: '4px 4px 0 0' }} />
-                        <span className="faint" style={{ fontSize: 9.5, whiteSpace: 'nowrap' }}>{x.day.slice(8)}/{x.day.slice(5, 7)}</span>
+                        <span className="faint" style={{ fontSize: 10, whiteSpace: 'nowrap' }}>{x.day.slice(8)}/{x.day.slice(5, 7)}</span>
                       </div>
                     ))}
                   </div>

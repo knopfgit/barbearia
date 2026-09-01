@@ -57,7 +57,7 @@ export default function Estoque() {
         </div>
       )}
 
-      <div className="grid" style={{ gridTemplateColumns: '1.2fr 1fr', alignItems: 'start' }}>
+      <div className="grid grid--principal" style={{ alignItems: 'start' }}>
         <div className="card">
           <div className="card__head"><h2>Níveis atuais</h2></div>
           <div className="card__body" style={{ paddingTop: 6 }}>
