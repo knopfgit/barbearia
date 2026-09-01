@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
-import { Field } from './components.jsx'
+import { Field, Modal } from './components.jsx'
+import { useToast } from './toast.jsx'
 
 const DEBOUNCE_MS = 280
 const MAX_RESULTADOS = 8
@@ -18,13 +19,16 @@ const MAX_RESULTADOS = 8
  * seleção sem ida ao servidor: na edição de agendamento o nome já veio junto do
  * registro (appt.clientName).
  *
- * `onNovoCliente` é o gancho do cadastro rápido: quando passado, o rodapé do
- * dropdown vira um botão pra cadastrar quem não existe ainda. Sem a prop, o vazio
- * mostra só a mensagem — o espaço fica reservado sem UI morta na tela.
+ * `permiteCadastro` liga o cadastro rápido: quando a busca não acha ninguém, o
+ * rodapé do dropdown vira um botão que abre o mini-formulário (nome + telefone) e,
+ * ao salvar, seleciona o cliente recém-criado pelo MESMO caminho de quem foi
+ * escolhido na lista — inclusive disparando o onChange, que é o que faz a Agenda
+ * marcar o formulário como não finalizado. Sem a prop, o vazio mostra só a
+ * mensagem.
  */
 export function BuscaCliente({
   value, onChange, nomeInicial = '', rotulo = 'Cliente', dica = '',
-  placeholder = 'Digite o nome ou o telefone…', onNovoCliente, autoFocus = false,
+  placeholder = 'Digite o nome ou o telefone…', permiteCadastro = false, autoFocus = false,
 }) {
   const [termo, setTermo] = useState('')
   const [resultados, setResultados] = useState([])
@@ -34,6 +38,8 @@ export function BuscaCliente({
   // Nome do que está selecionado. Começa no nomeInicial pra edição já abrir preenchida.
   const [nomeSel, setNomeSel] = useState(nomeInicial)
   const [telSel, setTelSel] = useState('')
+  // Nome digitado que abriu o cadastro (null = formulário fechado).
+  const [cadastrando, setCadastrando] = useState(null)
 
   const caixaRef = useRef(null)
   const inputRef = useRef(null)
@@ -117,58 +123,120 @@ export function BuscaCliente({
   const mostraPainel = aberto && temTermo
 
   return (
-    <Field label={rotulo}>
-      <div className="busca" ref={caixaRef}>
-        <input
-          ref={inputRef}
-          className="input"
-          value={termo}
-          autoFocus={autoFocus}
-          placeholder={placeholder}
-          onChange={(e) => { setTermo(e.target.value); setAberto(true) }}
-          onFocus={() => setAberto(true)}
-          onKeyDown={onKeyDown}
-          role="combobox"
-          aria-expanded={mostraPainel}
-          aria-autocomplete="list"
-          aria-controls="busca-cliente-lista"
-          aria-activedescendant={destacado >= 0 && lista[destacado] ? `busca-cliente-${lista[destacado].id}` : undefined}
-        />
-        {buscando && <span className="spinner spinner--inline busca__carregando" aria-label="Buscando" />}
+    <>
+      <Field label={rotulo}>
+        <div className="busca" ref={caixaRef}>
+          <input
+            ref={inputRef}
+            className="input"
+            value={termo}
+            autoFocus={autoFocus}
+            placeholder={placeholder}
+            onChange={(e) => { setTermo(e.target.value); setAberto(true) }}
+            onFocus={() => setAberto(true)}
+            onKeyDown={onKeyDown}
+            role="combobox"
+            aria-expanded={mostraPainel}
+            aria-autocomplete="list"
+            aria-controls="busca-cliente-lista"
+            aria-activedescendant={destacado >= 0 && lista[destacado] ? `busca-cliente-${lista[destacado].id}` : undefined}
+          />
+          {buscando && <span className="spinner spinner--inline busca__carregando" aria-label="Buscando" />}
 
-        {mostraPainel && (
-          <div className="busca__painel">
-            {lista.length > 0 ? (
-              <ul className="busca__lista" id="busca-cliente-lista" role="listbox">
-                {lista.map((c, i) => (
-                  <li key={c.id} id={`busca-cliente-${c.id}`} role="option" aria-selected={i === destacado}
-                    className={`busca__item${i === destacado ? ' destacado' : ''}`}
-                    onMouseEnter={() => setDestacado(i)}
-                    onMouseDown={(e) => e.preventDefault()}   // não tirar o foco do input antes do clique
-                    onClick={() => escolhe(c)}>
-                    <span className="busca__item-nome">{c.name}</span>
-                    {c.phone && <span className="faint">{c.phone}</span>}
-                  </li>
-                ))}
-                {resultados.length > MAX_RESULTADOS && (
-                  <li className="busca__mais">
-                    Mostrando {MAX_RESULTADOS} de {resultados.length} — escreva mais para afinar a busca.
-                  </li>
-                )}
-              </ul>
-            ) : !buscando && (
-              <div className="busca__vazio">
-                Nenhum cliente encontrado
-                {onNovoCliente && (
-                  <button type="button" className="btn btn--sm" style={{ marginTop: 8 }}
-                    onClick={() => onNovoCliente(termo.trim())}>+ Cadastrar “{termo.trim()}”</button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {dica && <small className="faint" style={{ display: 'block', marginTop: 5, fontSize: 11.5 }}>{dica}</small>}
-    </Field>
+          {mostraPainel && (
+            <div className="busca__painel">
+              {lista.length > 0 ? (
+                <ul className="busca__lista" id="busca-cliente-lista" role="listbox">
+                  {lista.map((c, i) => (
+                    <li key={c.id} id={`busca-cliente-${c.id}`} role="option" aria-selected={i === destacado}
+                      className={`busca__item${i === destacado ? ' destacado' : ''}`}
+                      onMouseEnter={() => setDestacado(i)}
+                      onMouseDown={(e) => e.preventDefault()}   // não tirar o foco do input antes do clique
+                      onClick={() => escolhe(c)}>
+                      <span className="busca__item-nome">{c.name}</span>
+                      {c.phone && <span className="faint">{c.phone}</span>}
+                    </li>
+                  ))}
+                  {resultados.length > MAX_RESULTADOS && (
+                    <li className="busca__mais">
+                      Mostrando {MAX_RESULTADOS} de {resultados.length} — escreva mais para afinar a busca.
+                    </li>
+                  )}
+                </ul>
+              ) : !buscando && (
+                <div className="busca__vazio">
+                  Nenhum cliente encontrado
+                  {permiteCadastro && (
+                    <div>
+                      <button type="button" className="btn btn--sm" style={{ marginTop: 8 }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { setAberto(false); setCadastrando(termo.trim()) }}>
+                        + Cadastrar “{termo.trim()}”
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {dica && <small className="faint" style={{ display: 'block', marginTop: 5, fontSize: 11.5 }}>{dica}</small>}
+      </Field>
+
+      {/* Fora do <Field>: ele é um <label>, e clique em qualquer descendente de
+          label é reencaminhado pro campo — os cliques do modal iriam parar no
+          input da busca. */}
+      {cadastrando !== null && (
+        <NovoClienteModal nomeInicial={cadastrando} onClose={() => setCadastrando(null)}
+          onCriado={(c) => { setCadastrando(null); escolhe(c) }} />
+      )}
+    </>
+  )
+}
+
+/**
+ * Cadastro rápido: só o que o balcão precisa na hora de atender (nome e telefone).
+ * O resto da ficha — e-mail, nascimento, observações — fica na tela de Clientes;
+ * pedir tudo aqui é atravessar a fila com um formulário.
+ *
+ * Reaproveita o POST /api/clients da tela de Clientes, que já devolve o cliente
+ * criado com id — é ele que volta pro onCriado e vira a seleção da busca.
+ */
+function NovoClienteModal({ nomeInicial, onClose, onCriado }) {
+  const [name, setName] = useState(nomeInicial)
+  const [phone, setPhone] = useState('')
+  const [busy, setBusy] = useState(false)
+  const toast = useToast()
+
+  async function salva() {
+    if (!name.trim()) return toast.erro('Informe o nome do cliente.')
+    setBusy(true)
+    try {
+      const criado = await api('/clients', { method: 'POST', body: { name: name.trim(), phone: phone.trim() || null } })
+      toast.ok(`${criado.name} cadastrado.`)
+      onCriado(criado)
+    } catch (e) { toast.erro(e.message); setBusy(false) }
+  }
+
+  // Enter salva: o cadastro acontece no meio do atendimento, com gente esperando.
+  const aoTeclar = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) salva() } }
+
+  return (
+    <Modal title="Novo cliente" onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>Cancelar</button>
+        <button className="btn btn--primary" onClick={salva} disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>
+      </>}>
+      <Field label="Nome">
+        <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={aoTeclar} />
+      </Field>
+      <Field label="Telefone (opcional)">
+        <input className="input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+          onKeyDown={aoTeclar} placeholder="(54) 99999-0000" />
+      </Field>
+      <p className="faint" style={{ margin: 0, fontSize: 12 }}>
+        O resto da ficha (e-mail, nascimento, observações) pode ser completado depois em Clientes.
+      </p>
+    </Modal>
   )
 }

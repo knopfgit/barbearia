@@ -108,7 +108,7 @@ function NewComanda({ barbers, onCreated }) {
           </select>
         </Field>
         <BuscaCliente rotulo="Cliente (opcional)" value={clientId} onChange={(id) => setClientId(id)}
-          dica="Deixe em branco para atender como avulso." />
+          permiteCadastro dica="Deixe em branco para atender como avulso." />
         <button className="btn btn--primary btn--block" onClick={create}>Abrir comanda</button>
       </div>
     </div>

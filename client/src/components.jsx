@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { STATUS_LABELS } from './util.js'
 
 export function Spinner() { return <div className="spinner" role="status" aria-label="Carregando" /> }
@@ -38,12 +38,34 @@ export function StatusBadge({ status }) {
   return <span className={`badge badge--${status}`}>{STATUS_LABELS[status] || status}</span>
 }
 
+// Pilha dos modais abertos. Com um modal dentro do outro (o cadastro rápido de
+// cliente abre por cima do agendamento), os dois escutavam o Escape em window e
+// fechavam juntos: desistir do cadastro derrubava o agendamento inteiro junto.
+// Só o modal do topo reage.
+const empilhados = []
+
 export function Modal({ title, onClose, children, footer, wide }) {
+  // O onClose das telas é quase sempre uma arrow inline, que muda a cada render do
+  // pai. Guardado numa ref, o registro na pilha acontece uma vez só (no mount): se
+  // dependesse do onClose, um render do modal de fora o reempilharia no TOPO com o
+  // de dentro aberto, e o Escape voltaria a fechar o errado.
+  const fecharRef = useRef(onClose)
+  fecharRef.current = onClose
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    const eu = {}
+    empilhados.push(eu)
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      if (empilhados[empilhados.length - 1] !== eu) return
+      fecharRef.current()
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      const i = empilhados.indexOf(eu)
+      if (i >= 0) empilhados.splice(i, 1)
+    }
+  }, [])
   return (
     <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className={`modal${wide ? ' modal--wide' : ''}`} role="dialog" aria-modal="true">

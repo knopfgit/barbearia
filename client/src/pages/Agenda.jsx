@@ -422,7 +422,8 @@ function ApptModal({ appt, date, barbers, services, dirtyRef, onClose, onSaved }
           e o nome já veio no registro do agendamento — editar abre preenchido sem
           precisar buscar de novo. */}
       <BuscaCliente rotulo="Cliente" value={clientId} nomeInicial={appt.clientName || ''}
-        onChange={(id) => setClientId(id)} dica="Deixe em branco para agendar sem cliente (avulso)." />
+        onChange={(id) => setClientId(id)} permiteCadastro
+        dica="Deixe em branco para agendar sem cliente (avulso)." />
       <Field label="Serviço">
         <select className="select" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
           <option value="">— A definir —</option>
