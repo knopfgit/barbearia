@@ -4,12 +4,12 @@ import { api } from '../api.js'
 import { useToast } from '../toast.jsx'
 import { hm, today, linkWhatsApp, whatsAppNumero, MSG_WHATSAPP, STATUS_LABELS, BLOCK_REASON_LABELS } from '../util.js'
 import { Spinner, Empty, StatusBadge, Modal, Field } from '../components.jsx'
+import { BuscaCliente } from '../buscacliente.jsx'
 
 export default function Agenda() {
   const [date, setDate] = useState(today())
   const [appts, setAppts] = useState(null)
   const [barbers, setBarbers] = useState([])
-  const [clients, setClients] = useState([])
   const [services, setServices] = useState([])
   const [editing, setEditing] = useState(null)
   const [formKey, setFormKey] = useState(0)
@@ -50,7 +50,6 @@ export default function Agenda() {
   useEffect(loadBlocks, [date])
   useEffect(() => {
     api('/barbers').then(setBarbers)
-    api('/clients').then(setClients)
     api('/services').then(setServices)
     api('/settings').then((s) => setShopName(s.shopName || '')).catch(() => {})
   }, [])
@@ -169,7 +168,7 @@ export default function Agenda() {
       ))}
 
       {editing && (
-        <ApptModal key={formKey} appt={editing} date={date} barbers={barbers} clients={clients} services={services}
+        <ApptModal key={formKey} appt={editing} date={date} barbers={barbers} services={services}
           dirtyRef={dirtyRef}
           onClose={requestCloseEditing}
           onSaved={(diaSalvo) => {
@@ -280,7 +279,7 @@ function MiniCalendar({ barberId, selectedDate, excludeId, onSelect }) {
   )
 }
 
-function ApptModal({ appt, date, barbers, clients, services, dirtyRef, onClose, onSaved }) {
+function ApptModal({ appt, date, barbers, services, dirtyRef, onClose, onSaved }) {
   const isNew = !appt.id
   const toast = useToast()
   const [apptDate, setApptDate] = useState(appt.startAt ? appt.startAt.slice(0, 10) : date)
@@ -419,12 +418,11 @@ function ApptModal({ appt, date, barbers, clients, services, dirtyRef, onClose, 
         <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ maxWidth: 140 }} />
       </Field>
 
-      <Field label="Cliente">
-        <select className="select" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-          <option value="">— Sem cliente / avulso —</option>
-          {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </Field>
+      {/* O clientId continua sendo o estado do formulário (o dirtyRef compara ele),
+          e o nome já veio no registro do agendamento — editar abre preenchido sem
+          precisar buscar de novo. */}
+      <BuscaCliente rotulo="Cliente" value={clientId} nomeInicial={appt.clientName || ''}
+        onChange={(id) => setClientId(id)} dica="Deixe em branco para agendar sem cliente (avulso)." />
       <Field label="Serviço">
         <select className="select" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
           <option value="">— A definir —</option>

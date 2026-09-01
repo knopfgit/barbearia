@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
+import { BuscaCliente } from '../buscacliente.jsx'
 import { useToast } from '../toast.jsx'
 import { brl, hm, dia, utcDate, PAYMENT_LABELS, TICKET_STATUS_LABELS, parseMoney } from '../util.js'
 import { Spinner, Empty, Field, Modal } from '../components.jsx'
@@ -13,19 +14,18 @@ export default function Comanda() {
   const [fechadas, setFechadas] = useState(null)
   const [aba, setAba] = useState('abertas')
   const [barbers, setBarbers] = useState([])
-  const [clients, setClients] = useState([])
 
   const loadOpen = useCallback(() => { api('/tickets?status=open').then(setOpen).catch(() => setOpen([])) }, [])
   // Fechadas do caixa ABERTO: é o que ainda dá para estornar (o backend recusa venda
   // de caixa já fechado), e a lista não cresce para sempre como "todas as fechadas".
   const loadFechadas = useCallback(() => { api('/tickets?session=atual').then(setFechadas).catch(() => setFechadas([])) }, [])
   useEffect(() => { loadOpen(); loadFechadas() }, [loadOpen, loadFechadas])
-  useEffect(() => { api('/barbers').then(setBarbers); api('/clients').then(setClients) }, [])
+  useEffect(() => { api('/barbers').then(setBarbers) }, [])
 
   function select(id) { setParams(id ? { id } : {}) }
 
   if (selectedId) {
-    return <ComandaDetalhe id={selectedId} barbers={barbers} clients={clients}
+    return <ComandaDetalhe id={selectedId} barbers={barbers}
       onBack={() => { select(null); loadOpen(); loadFechadas() }} />
   }
 
@@ -80,13 +80,13 @@ export default function Comanda() {
             )}
           </div>
         </div>
-        <NewComanda barbers={barbers} clients={clients} onCreated={(id) => select(id)} />
+        <NewComanda barbers={barbers} onCreated={(id) => select(id)} />
       </div>
     </>
   )
 }
 
-function NewComanda({ barbers, clients, onCreated }) {
+function NewComanda({ barbers, onCreated }) {
   const [barberId, setBarberId] = useState('')
   const [clientId, setClientId] = useState('')
   const toast = useToast()
@@ -107,12 +107,8 @@ function NewComanda({ barbers, clients, onCreated }) {
             {barbers.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </Field>
-        <Field label="Cliente (opcional)">
-          <select className="select" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-            <option value="">— Avulso —</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </Field>
+        <BuscaCliente rotulo="Cliente (opcional)" value={clientId} onChange={(id) => setClientId(id)}
+          dica="Deixe em branco para atender como avulso." />
         <button className="btn btn--primary btn--block" onClick={create}>Abrir comanda</button>
       </div>
     </div>
@@ -124,7 +120,7 @@ function NewComanda({ barbers, clients, onCreated }) {
  * ABERTA (catálogo, desconto, fechamento). Fechada, cancelada ou estornada abre a
  * visão de leitura — que é onde mora o estorno.
  */
-function ComandaDetalhe({ id, barbers, clients, onBack }) {
+function ComandaDetalhe({ id, barbers, onBack }) {
   const [status, setStatus] = useState(null)
 
   useEffect(() => {
@@ -146,7 +142,7 @@ function ComandaDetalhe({ id, barbers, clients, onBack }) {
     )
   }
   return status === 'open'
-    ? <ComandaEditor id={id} barbers={barbers} clients={clients} onBack={onBack} />
+    ? <ComandaEditor id={id} barbers={barbers} onBack={onBack} />
     : <ComandaFechada id={id} onBack={onBack} />
 }
 
@@ -267,7 +263,7 @@ function EstornoModal({ ticket, onClose, onDone }) {
   )
 }
 
-function ComandaEditor({ id, barbers, clients, onBack }) {
+function ComandaEditor({ id, barbers, onBack }) {
   const [t, setT] = useState(null)
   const [services, setServices] = useState([])
   const [products, setProducts] = useState([])

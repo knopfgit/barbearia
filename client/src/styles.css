@@ -300,6 +300,21 @@ label.field { display: block; margin-bottom: 13px; }
 .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
 .spinner { width: 30px; height: 30px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 40px auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* Spinner de dentro de campo (busca de cliente): o de cima tem margem de 40px. */
+.spinner--inline { width: 15px; height: 15px; border-width: 2px; margin: 0; }
+
+/* ---------- busca de cliente (autocomplete) ---------- */
+.busca { position: relative; }
+.busca__carregando { position: absolute; right: 11px; top: 50%; margin-top: -8px; pointer-events: none; }
+.busca__painel { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 26px rgba(0,0,0,.35); overflow: hidden; }
+.busca__lista { list-style: none; margin: 0; padding: 4px; max-height: 260px; overflow-y: auto; }
+.busca__item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border-radius: 7px; cursor: pointer; font-size: 13.5px; }
+.busca__item.destacado { background: var(--accent-a14); color: var(--accent-text); }
+.busca__item-nome { font-weight: 600; }
+.busca__mais { padding: 8px 11px; font-size: 11px; color: var(--faint); border-top: 1px solid var(--line-soft); }
+.busca__vazio { padding: 14px 12px; font-size: 13px; color: var(--muted); text-align: center; }
+.busca__sel { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 9px 8px 12px; border: 1px solid var(--accent-dim); border-radius: var(--radius); background: var(--accent-a06); }
+.busca__sel-nome { font-size: 13.5px; font-weight: 600; }
 
 /* ---------- agenda ---------- */
 .agenda-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
