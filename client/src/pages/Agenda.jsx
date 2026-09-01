@@ -372,12 +372,12 @@ function ApptModal({ appt, date, barbers, services, dirtyRef, onClose, onSaved }
       {encaixe && (
         <div style={{ margin: '0 0 13px' }}>
           {encaixe.slots.length === 0 ? (
-            <div className="faint" style={{ fontSize: 12.5 }}>
+            <div className="faint" style={{ fontSize: 12 }}>
               💡 Sem horários próximos — nada livre nos {encaixe.daysSearched} dias seguintes.
             </div>
           ) : (
             <>
-              <div className="faint" style={{ fontSize: 12.5, marginBottom: 7 }}>
+              <div className="faint" style={{ fontSize: 12, marginBottom: 7 }}>
                 {encaixe.otherDay
                   ? `💡 Sem vagas em ${dm(encaixe.requestedDate)} — próximo: ${dm(encaixe.slots[0].date)} às ${encaixe.slots[0].time}`
                   : '💡 Próximos livres:'}
@@ -539,12 +539,12 @@ function ZapModal({ appt, shopName, onClose }) {
   return (
     <Modal title={`WhatsApp · ${appt.clientName}`} onClose={onClose}
       footer={<button className="btn" onClick={onClose}>Fechar</button>}>
-      <p className="faint" style={{ fontSize: 12.5, marginBottom: 14 }}>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 'var(--sp-4)' }}>
         Abre a conversa com <strong>+{numero}</strong> e o texto já escrito. Nada é enviado
         automaticamente — confira e mande você mesmo.
       </p>
       {opcoes.map((o) => (
-        <div key={o.chave} style={{ marginBottom: 14 }}>
+        <div key={o.chave} style={{ marginBottom: 'var(--sp-4)' }}>
           <div className="eyebrow" style={{ marginBottom: 6 }}>{o.titulo}</div>
           <div className="zap-msg">{o.texto}</div>
           <a className="btn btn--sm btn--zap" href={linkWhatsApp(appt.clientPhone, o.texto)}

@@ -27,11 +27,51 @@ r.get('/dashboard', wrap((req, res) => {
      FROM ticket_items i JOIN tickets t ON t.id=i.ticketId JOIN barbers b ON b.id=i.barberId
      WHERE t.status='closed' AND date(t.closedAt, '${BR_OFFSET_SQL}')=? GROUP BY b.id ORDER BY revenue DESC`
   ).all(d)
+  // Ontem, para o comparativo do painel. É a MESMA soma de hoje com outra data —
+  // o "vs ontem" da tela sai daqui, medido, e não de estimativa.
+  const revenueYesterday = db.prepare(
+    `SELECT COALESCE(SUM(total),0) AS total FROM tickets
+     WHERE status='closed' AND date(closedAt, '${BR_OFFSET_SQL}') = date(?, '-1 day')`
+  ).get(d)
+
+  // Faturamento dos últimos 7 dias (hoje inclusive), para o mini-gráfico. Só volta
+  // dia que teve venda; a tela completa os buracos com zero para a semana ficar
+  // inteira, sem inventar movimento onde não houve.
+  const last7 = db.prepare(
+    `SELECT date(closedAt, '${BR_OFFSET_SQL}') AS day, COALESCE(SUM(total),0) AS total, COUNT(*) AS n
+     FROM tickets WHERE status='closed'
+       AND date(closedAt, '${BR_OFFSET_SQL}') BETWEEN date(?, '-6 days') AND ?
+     GROUP BY day ORDER BY day`
+  ).all(d, d)
+
+  // Quem está esperando agora. Mesmo recorte de dia da tela da Fila (server/routes/queue.js):
+  // a fila é do dia e não herda quem sobrou de ontem.
+  const queueWaiting = db.prepare(
+    `SELECT COUNT(*) AS n FROM queue
+     WHERE status='aguardando' AND date(createdAt, '${BR_OFFSET_SQL}') = date('now', '${BR_OFFSET_SQL}')`
+  ).get()
+
+  // Serviço mais vendido hoje (mesma conta do topServices do financeiro, com o dia fixo).
+  const topServiceToday = db.prepare(
+    `SELECT i.description AS name, SUM(i.qty) AS qty, COALESCE(SUM(i.total),0) AS total
+     FROM ticket_items i JOIN tickets t ON t.id=i.ticketId
+     WHERE t.status='closed' AND date(t.closedAt, '${BR_OFFSET_SQL}')=? AND i.kind='service'
+     GROUP BY i.description ORDER BY qty DESC, total DESC LIMIT 1`
+  ).get(d) || null
+
+  const apptsByStatus = db.prepare(
+    "SELECT status, COUNT(*) AS n FROM appointments WHERE date(startAt)=? GROUP BY status"
+  ).all(d)
+
   res.json({
     date: d,
     revenueToday: revenue.total, ticketsToday: revenue.n,
     apptsToday: appts.n, openTickets: openTickets.n,
     cashOpen: !!cash, nextAppts, topBarbers,
+    // Acréscimos do painel — nada acima foi removido nem renomeado.
+    revenueYesterday: revenueYesterday.total,
+    last7, queueWaiting: queueWaiting.n, topServiceToday,
+    apptsByStatus: Object.fromEntries(apptsByStatus.map((row) => [row.status, row.n])),
   })
 }))
 

@@ -180,7 +180,7 @@ export function BuscaCliente({
             </div>
           )}
         </div>
-        {dica && <small className="faint" style={{ display: 'block', marginTop: 5, fontSize: 11.5 }}>{dica}</small>}
+        {dica && <small className="faint" style={{ display: 'block', marginTop: 5, fontSize: 11 }}>{dica}</small>}
       </Field>
 
       {/* Fora do <Field>: ele é um <label>, e clique em qualquer descendente de

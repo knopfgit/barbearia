@@ -19,7 +19,7 @@ export default function Clientes() {
         <div><div className="eyebrow">Cadastros</div><h1>Clientes</h1><p>Base de clientes da barbearia.</p></div>
         <button className="btn btn--primary" onClick={() => setEditing({})}>Novo cliente</button>
       </div>
-      <div className="row" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ marginBottom: 'var(--sp-secao)' }}>
         <input className="input" placeholder="Buscar por nome ou telefone…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 340 }} />
       </div>
       <div className="card">

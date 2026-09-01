@@ -185,7 +185,7 @@ function FilaModal({ clients, services, barbers, onClose, onSaved }) {
         <button className="btn" onClick={onClose}>Cancelar</button>
         <button className="btn btn--primary" onClick={salvar} disabled={busy}>{busy ? 'Salvando…' : 'Entrar na fila'}</button>
       </>}>
-      <div className="catalog-tabs" style={{ marginBottom: 14 }}>
+      <div className="catalog-tabs" style={{ marginBottom: 'var(--sp-4)' }}>
         <button className={`chip-tab${aba === 'cadastrado' ? ' active' : ''}`} onClick={() => setAba('cadastrado')}>Cliente cadastrado</button>
         <button className={`chip-tab${aba === 'avulso' ? ' active' : ''}`} onClick={() => setAba('avulso')}>Avulso (só o nome)</button>
       </div>

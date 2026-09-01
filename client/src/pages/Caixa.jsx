@@ -50,13 +50,13 @@ export default function Caixa() {
         <div className="card"><div className="card__body"><Empty mark="▤" title="Caixa fechado" hint="Abra o caixa para começar a registrar vendas." /></div></div>
       ) : (
         <>
-          <div className="kpis" style={{ marginBottom: 20 }}>
+          <div className="kpis" style={{ marginBottom: 'var(--sp-secao)' }}>
             <div className="kpi"><div className="kpi__label">Vendas na sessão</div><div className="kpi__value money">{brl(state.summary.salesTotal)}</div><div className="kpi__foot">aberto às {hm(utcDate(state.session.openedAt))}</div></div>
             <div className="kpi"><div className="kpi__label">Troco inicial</div><div className="kpi__value money">{brl(state.session.openingFloat)}</div><div className="kpi__foot">fundo de caixa</div></div>
             <div className="kpi"><div className="kpi__label">Esperado em dinheiro</div><div className="kpi__value money">{brl(state.expectedCash)}</div><div className="kpi__foot">gaveta ao fechar</div></div>
           </div>
 
-          <div className="grid" style={{ gridTemplateColumns: '1fr 1.3fr' }}>
+          <div className="grid grid--apoio">
             <div className="card">
               <div className="card__head"><h2>Por forma de pagamento</h2></div>
               <div className="card__body">
@@ -66,7 +66,7 @@ export default function Caixa() {
                     <span className="money">{brl(state.summary.byMethod[k] || 0)}</span>
                   </div>
                 ))}
-                <div className="row" style={{ marginTop: 14, gap: 8 }}>
+                <div className="row" style={{ marginTop: 16, gap: 8 }}>
                   <button className="btn btn--sm" onClick={() => setModal('in')}>+ Reforço</button>
                   <button className="btn btn--sm" onClick={() => setModal('out')}>− Sangria</button>
                 </div>
@@ -266,7 +266,7 @@ function DetalheModal({ id, onClose }) {
               {d.session.closedByName && <> · fechou: {d.session.closedByName}</>}
             </p>
 
-            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+            <div className="grid grid--2">
               <div>
                 <h3 className="eyebrow" style={{ marginBottom: 6 }}>Conferência</h3>
                 {linha('Troco inicial', brl(d.session.openingFloat))}
@@ -286,7 +286,7 @@ function DetalheModal({ id, onClose }) {
                 <h3 className="eyebrow" style={{ marginBottom: 6 }}>Por forma de pagamento</h3>
                 {Object.entries(PAYMENT_LABELS).map(([k, v]) => linha(v, brl(d.summary.byMethod[k] || 0)))}
                 {d.session.notes && (
-                  <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+                  <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>
                     <strong>Observações:</strong> {d.session.notes}
                   </p>
                 )}

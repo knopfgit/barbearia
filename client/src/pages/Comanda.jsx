@@ -34,7 +34,7 @@ export default function Comanda() {
       <div className="page-head">
         <div><div className="eyebrow">Operação</div><h1>Comanda / PDV</h1><p>Abra uma comanda para atender e cobrar.</p></div>
       </div>
-      <div className="grid" style={{ gridTemplateColumns: '1fr 320px' }}>
+      <div className="grid grid--lateral">
         <div className="card">
           <div className="card__head">
             <div className="catalog-tabs" style={{ marginBottom: 0 }}>
@@ -48,7 +48,7 @@ export default function Comanda() {
                 <Empty mark="✂" title="Nenhuma comanda aberta" hint="Abra uma nova ao lado ou pela agenda." />
               ) : open.map((t) => (
                 <button key={t.id} className="slot" onClick={() => select(t.id)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}>
-                  <div className="slot__time" style={{ fontSize: 15, width: 44 }}>#{t.id}</div>
+                  <div className="slot__time" style={{ fontSize: 16, width: 44 }}>#{t.id}</div>
                   <div className="slot__bar" style={{ background: 'var(--accent)' }} />
                   <div className="slot__main">
                     <div className="slot__client">{t.clientName || t.guestName || 'Avulso'}</div>
@@ -62,7 +62,7 @@ export default function Comanda() {
                 <Empty mark="▤" title="Nenhuma comanda fechada neste caixa" hint="Aparecem aqui as vendas cobradas desde a abertura do caixa." />
               ) : fechadas.map((t) => (
                 <button key={t.id} className="slot" onClick={() => select(t.id)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}>
-                  <div className="slot__time" style={{ fontSize: 15, width: 44 }}>#{t.id}</div>
+                  <div className="slot__time" style={{ fontSize: 16, width: 44 }}>#{t.id}</div>
                   <div className="slot__bar" style={{ background: t.status === 'refunded' ? 'var(--oxblood)' : 'var(--green)' }} />
                   <div className="slot__main">
                     <div className="slot__client">{t.clientName || t.guestName || 'Avulso'}</div>
@@ -182,7 +182,7 @@ function ComandaFechada({ id, onBack }) {
       </div>
 
       {estornada && (
-        <div className="card" style={{ marginBottom: 16, borderColor: 'var(--oxblood)' }}>
+        <div className="card" style={{ marginBottom: 'var(--sp-secao)', borderColor: 'var(--oxblood)' }}>
           <div className="card__body">
             <strong style={{ color: 'var(--oxblood-text)' }}>Venda estornada</strong>
             <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
@@ -202,8 +202,8 @@ function ComandaFechada({ id, onBack }) {
           {(t.items || []).length === 0 ? <Empty mark="—" title="Comanda sem itens" /> : t.items.map((i) => (
             <div className="comanda__item" key={i.id}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{i.description}{i.qty > 1 ? ` ×${i.qty}` : ''}</div>
-                <div className="faint" style={{ fontSize: 11.5 }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{i.description}{i.qty > 1 ? ` ×${i.qty}` : ''}</div>
+                <div className="faint" style={{ fontSize: 11 }}>
                   {i.barberName || '—'} · comissão {brl(i.commissionValue)}
                   {estornada && ' (estornada)'}
                 </div>
@@ -219,7 +219,7 @@ function ComandaFechada({ id, onBack }) {
             <span>Total</span>
             <span className="comanda__grand" style={{ color: estornada ? 'var(--faint)' : 'var(--accent-text)', textDecoration: estornada ? 'line-through' : 'none' }}>{brl(t.total)}</span>
           </div>
-          <div className="faint" style={{ fontSize: 11.5, textAlign: 'right', marginTop: 2 }}>comissão total {brl(comissaoTotal)}</div>
+          <div className="faint" style={{ fontSize: 11, textAlign: 'right', marginTop: 2 }}>comissão total {brl(comissaoTotal)}</div>
         </div>
       </div>
 
@@ -252,7 +252,7 @@ function EstornoModal({ ticket, onClose, onDone }) {
         Esta ação desfaz a venda de <strong className="money">{brl(ticket.total)}</strong>: devolve estoque,
         retira o valor do caixa e estorna comissão e pontos. Continuar?
       </p>
-      <p className="faint" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+      <p className="faint" style={{ fontSize: 12, lineHeight: 1.5 }}>
         A comanda não reabre — ela fica registrada como estornada, com o seu nome e o motivo.
       </p>
       <Field label="Motivo do estorno">
@@ -404,8 +404,8 @@ function ComandaEditor({ id, barbers, onBack }) {
             ) : (t.items.map((i) => (
               <div className="comanda__item" key={i.id}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{i.description}</div>
-                  <div className="faint" style={{ fontSize: 11.5 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{i.description}</div>
+                  <div className="faint" style={{ fontSize: 11 }}>
                     {i.barberName || '—'} · comissão {i.commissionPct}% = {brl(comissaoDoItem(i))}
                     {comissaoLiquida && i.descontoRateado > 0 && (
                       <span title={`Desconto rateado neste item: ${brl(i.descontoRateado)}`}>
@@ -429,7 +429,7 @@ function ComandaEditor({ id, barbers, onBack }) {
               <button className="btn btn--sm" onClick={applyDiscount}>Aplicar</button>
             </div>
             <div className="comanda__totline"><span>Total</span><span className="comanda__grand" style={{ color: 'var(--accent-text)' }}>{brl(t.total)}</span></div>
-            <div className="faint" style={{ fontSize: 11.5, textAlign: 'right', marginTop: 2 }}>
+            <div className="faint" style={{ fontSize: 11, textAlign: 'right', marginTop: 2 }}>
               comissão total {brl(commissionTotal)}
               {comissaoLiquida && ' · prévia, com o desconto rateado'}
             </div>
