@@ -5,3 +5,6 @@ server/data/*.db*
 .env
 # config local do Claude Code (permissões da máquina, não versionar)
 .claude/settings.local.json
+.agents/
+.claude/skills/
+skills-lock.json
