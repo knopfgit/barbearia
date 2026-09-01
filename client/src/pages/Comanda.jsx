@@ -182,7 +182,7 @@ function ComandaFechada({ id, onBack }) {
       </div>
 
       {estornada && (
-        <div className="card" style={{ marginBottom: 16, borderColor: 'var(--oxblood)' }}>
+        <div className="card" style={{ marginBottom: 'var(--sp-secao)', borderColor: 'var(--oxblood)' }}>
           <div className="card__body">
             <strong style={{ color: 'var(--oxblood-text)' }}>Venda estornada</strong>
             <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>

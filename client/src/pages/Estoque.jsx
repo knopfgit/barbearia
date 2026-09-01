@@ -31,14 +31,14 @@ export default function Estoque() {
         <button className="btn btn--primary" onClick={() => setModal(true)}>Nova movimentação</button>
       </div>
 
-      <div className="kpis" style={{ marginBottom: 20 }}>
+      <div className="kpis" style={{ marginBottom: 'var(--sp-secao)' }}>
         <div className="kpi"><div className="kpi__label">Itens cadastrados</div><div className="kpi__value">{products.length}</div><div className="kpi__foot">produtos e insumos</div></div>
         <div className="kpi"><div className="kpi__label">Abaixo do mínimo</div><div className="kpi__value" style={{ color: low.length ? 'var(--oxblood)' : 'inherit' }}>{low.length}</div><div className="kpi__foot">precisam de reposição</div></div>
         <div className="kpi"><div className="kpi__label">Valor em estoque (custo)</div><div className="kpi__value money">{brl(products.reduce((s, p) => s + p.stock * p.cost, 0))}</div><div className="kpi__foot">soma de custo × estoque</div></div>
       </div>
 
       {low.length > 0 && (
-        <div className="card" style={{ marginBottom: 20, borderColor: 'var(--oxblood)' }}>
+        <div className="card" style={{ marginBottom: 'var(--sp-secao)', borderColor: 'var(--oxblood)' }}>
           <div className="card__head"><h2>Estoque baixo</h2></div>
           <div className="card__body" style={{ paddingTop: 6 }}>
             <table className="table">

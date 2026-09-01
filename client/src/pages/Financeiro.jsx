@@ -28,19 +28,19 @@ export default function Financeiro() {
 
       {!d ? <Spinner /> : (
         <>
-          <div className="kpis" style={{ marginBottom: 20 }}>
+          <div className="kpis" style={{ marginBottom: 'var(--sp-secao)' }}>
             <div className="kpi"><div className="kpi__label">Faturamento</div><div className="kpi__value money">{brl(d.totals.revenue)}</div><div className="kpi__foot">{d.totals.tickets} comanda(s)</div></div>
             <div className="kpi"><div className="kpi__label">Serviços</div><div className="kpi__value money">{brl(d.serviceRevenue)}</div><div className="kpi__foot">{pct(d.serviceRevenue, d.totals.revenue)} do total</div></div>
             <div className="kpi"><div className="kpi__label">Produtos</div><div className="kpi__value money">{brl(d.productRevenue)}</div><div className="kpi__foot">{pct(d.productRevenue, d.totals.revenue)} do total</div></div>
             <div className="kpi"><div className="kpi__label">Comissões</div><div className="kpi__value money">{brl(d.totalCommission)}</div><div className="kpi__foot">a repassar aos profissionais</div></div>
           </div>
 
-          <div className="grid grid--2" style={{ marginBottom: 16 }}>
+          <div className="grid grid--2" style={{ marginBottom: 'var(--sp-secao)' }}>
             <div className="card">
               <div className="card__head"><h2>Comissão por profissional</h2></div>
               <div className="card__body">
                 {d.byBarber.length === 0 ? <Empty mark="♞" title="Sem produção no período" /> : d.byBarber.map((b) => (
-                  <div key={b.id} style={{ marginBottom: 16 }}>
+                  <div key={b.id} style={{ marginBottom: 'var(--sp-secao)' }}>
                     <div className="spread" style={{ marginBottom: 6 }}>
                       <div className="row" style={{ gap: 9 }}><span className="avatar" style={{ color: b.color }}>{initials(b.name)}</span><strong style={{ fontSize: 13 }}>{b.name}</strong></div>
                       <div className="right"><div className="money" style={{ color: 'var(--accent-text)' }}>{brl(b.commission)}</div><div className="faint" style={{ fontSize: 11 }}>de {brl(b.revenue)}</div></div>

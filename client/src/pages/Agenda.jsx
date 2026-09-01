@@ -539,12 +539,12 @@ function ZapModal({ appt, shopName, onClose }) {
   return (
     <Modal title={`WhatsApp · ${appt.clientName}`} onClose={onClose}
       footer={<button className="btn" onClick={onClose}>Fechar</button>}>
-      <p className="faint" style={{ fontSize: 12, marginBottom: 16 }}>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 'var(--sp-4)' }}>
         Abre a conversa com <strong>+{numero}</strong> e o texto já escrito. Nada é enviado
         automaticamente — confira e mande você mesmo.
       </p>
       {opcoes.map((o) => (
-        <div key={o.chave} style={{ marginBottom: 16 }}>
+        <div key={o.chave} style={{ marginBottom: 'var(--sp-4)' }}>
           <div className="eyebrow" style={{ marginBottom: 6 }}>{o.titulo}</div>
           <div className="zap-msg">{o.texto}</div>
           <a className="btn btn--sm btn--zap" href={linkWhatsApp(appt.clientPhone, o.texto)}

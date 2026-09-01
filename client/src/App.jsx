@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth.jsx'
 import { Spinner, Logo } from './components.jsx'
+import { Icone } from './icons.jsx'
 import { initials } from './util.js'
 
 import Login from './pages/Login.jsx'
@@ -21,23 +22,23 @@ import Configuracoes from './pages/Configuracoes.jsx'
 
 const NAV = [
   { group: 'Operação', items: [
-    { to: '/', label: 'Painel', icon: '▣', end: true },
-    { to: '/agenda', label: 'Agenda', icon: '🗓' },
-    { to: '/fila', label: 'Fila de espera', icon: '⏳' },
-    { to: '/comanda', label: 'Comanda / PDV', icon: '✂' },
-    { to: '/caixa', label: 'Caixa', icon: '▤' },
+    { to: '/', label: 'Painel', icon: 'painel', end: true },
+    { to: '/agenda', label: 'Agenda', icon: 'agenda' },
+    { to: '/fila', label: 'Fila de espera', icon: 'fila' },
+    { to: '/comanda', label: 'Comanda / PDV', icon: 'comanda' },
+    { to: '/caixa', label: 'Caixa', icon: 'caixa' },
   ] },
   { group: 'Cadastros', items: [
-    { to: '/clientes', label: 'Clientes', icon: '☻' },
-    { to: '/profissionais', label: 'Profissionais', icon: '♞' },
-    { to: '/servicos', label: 'Serviços', icon: '≣' },
-    { to: '/produtos', label: 'Produtos', icon: '▦' },
+    { to: '/clientes', label: 'Clientes', icon: 'clientes' },
+    { to: '/profissionais', label: 'Profissionais', icon: 'profissionais' },
+    { to: '/servicos', label: 'Serviços', icon: 'servicos' },
+    { to: '/produtos', label: 'Produtos', icon: 'produtos' },
   ] },
   { group: 'Gestão', items: [
-    { to: '/financeiro', label: 'Financeiro', icon: '$' },
-    { to: '/estoque', label: 'Estoque', icon: '▥' },
-    { to: '/fidelidade', label: 'Fidelidade', icon: '♥' },
-    { to: '/configuracoes', label: 'Configurações', icon: '⚙' },
+    { to: '/financeiro', label: 'Financeiro', icon: 'financeiro' },
+    { to: '/estoque', label: 'Estoque', icon: 'estoque' },
+    { to: '/fidelidade', label: 'Fidelidade', icon: 'fidelidade' },
+    { to: '/configuracoes', label: 'Configurações', icon: 'configuracoes' },
   ] },
 ]
 
@@ -56,7 +57,7 @@ function Sidebar({ open, onClose }) {
             {g.items.map((it) => (
               <NavLink key={it.to} to={it.to} end={it.end}
                 className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="ic">{it.icon}</span>{it.label}
+                <Icone nome={it.icon} className="ic" /><span className="nav-link__label">{it.label}</span>
               </NavLink>
             ))}
           </div>
@@ -84,7 +85,7 @@ function Layout() {
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <div>
         <div className="mobile-bar">
-          <button className="btn btn--ghost btn--sm" onClick={() => setOpen((o) => !o)}>☰</button>
+          <button className="btn btn--ghost btn--sm" onClick={() => setOpen((o) => !o)} aria-label="Abrir menu"><Icone nome="menu" size={20} /></button>
           <div className="brand__name" style={{ fontSize: 14 }}>Barbearia Mattos</div>
         </div>
         <main className="main">

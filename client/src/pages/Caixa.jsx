@@ -50,7 +50,7 @@ export default function Caixa() {
         <div className="card"><div className="card__body"><Empty mark="▤" title="Caixa fechado" hint="Abra o caixa para começar a registrar vendas." /></div></div>
       ) : (
         <>
-          <div className="kpis" style={{ marginBottom: 20 }}>
+          <div className="kpis" style={{ marginBottom: 'var(--sp-secao)' }}>
             <div className="kpi"><div className="kpi__label">Vendas na sessão</div><div className="kpi__value money">{brl(state.summary.salesTotal)}</div><div className="kpi__foot">aberto às {hm(utcDate(state.session.openedAt))}</div></div>
             <div className="kpi"><div className="kpi__label">Troco inicial</div><div className="kpi__value money">{brl(state.session.openingFloat)}</div><div className="kpi__foot">fundo de caixa</div></div>
             <div className="kpi"><div className="kpi__label">Esperado em dinheiro</div><div className="kpi__value money">{brl(state.expectedCash)}</div><div className="kpi__foot">gaveta ao fechar</div></div>
