@@ -12,7 +12,7 @@ export default function Fidelidade() {
   const [history, setHistory] = useState(null) // cliente selecionado pra histórico
   const toast = useToast()
 
-  const load = useCallback(() => api('/loyalty/clients').then(setData).catch(() => setData({ settings: {}, clients: [] })), [])
+  const load = useCallback(() => { api('/loyalty/clients').then(setData).catch(() => setData({ settings: {}, clients: [] })) }, [])
   useEffect(load, [load])
 
   if (!data) return <Spinner />
